@@ -1,0 +1,45 @@
+<!-- Scenario
+You are the on-call engineer for an e-commerce platform. The monitoring system has thrown an alert: the webapp-service is not routing any traffic to the webapp-deployment pods.
+
+A Kubernetes Service acts as a stable router, but it is completely blind. It relies entirely on Label Selectors to find which Pod IPs to add to its Endpoints list. If the labels do not match exactly, the Service registers zero endpoints and drops all incoming traffic into a black hole.
+
+Your task is to follow a layered diagnostic process to isolate the fault, fix the label mismatch, and prove that routing has been restored.
+
+Task
+Working directory: /home/user
+
+1. Pod Status Check:
+
+Verify that the pods for webapp-deployment are actually running and have IPs. (If the pods are crashing, the service is not the primary problem).
+2. Endpoint Verification:
+
+Check the endpoints for webapp-service. You will see that it shows <none>.
+Diagnose: Compare the Service's selector against the actual Pod labels.
+Find what selector the service is actively looking for.
+Find what labels the pods actually possess.
+3. The Fix:
+
+Apply the fixed manifest.
+4. Verification:
+
+Verify that webapp-service now has populated Endpoints.
+Test the ClusterIP directly by creating a temporary tester pod to fetch the webpage.
+Expected Outcome
+The webapp-service selector is corrected to match the pods.
+The Service Endpoints list is populated with the running Pod IPs.
+Network traffic flows successfully from a test pod to the Service ClusterIP. -->
+
+
+ kubectl get pod
+    2  kubectl get pod -o wide
+    3  kubectl get service
+    4  kubectl get endpoints webapp-service 
+    7  kubectl decribe svc webapp-service 
+   11  kubectl describe pod webapp-deployment-65b6df75f4-cbs9q
+
+   13  vi broken-service.yaml 
+   14  kubectl apply -f broken-service.yaml
+   15  kubectl get svc
+   16  kubectl get endpoints
+   17  kubectl get pod -o wide
+   19  kubectl get pod --show-labels
