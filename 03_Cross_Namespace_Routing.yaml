@@ -1,0 +1,50 @@
+
+# Scenario
+# In Kubernetes, CoreDNS acts like an internal directory service (like JustDial) for your cluster. When you deploy a Service, CoreDNS automatically generates a DNS record for it.
+
+# Your development team has deployed a new API in a secure, isolated namespace called production. However, a legacy application running in the default namespace needs to send data to it. The developers are complaining that their connection requests to prod-api are failing with an NXDOMAIN (Not Found) error.
+
+# You know that short DNS names only work when both pods are in the same namespace. To cross namespace boundaries, you must use the Fully Qualified Domain Name (FQDN).
+
+# Task
+# Working directory: /home/user
+
+# 1. Create the Isolated Environment:
+
+# Create a new namespace named production.
+# 2. Deploy the Target Service:
+
+# Inside the production namespace, create a Deployment named prod-api using the nginx image.
+# Expose this deployment as a ClusterIP Service named prod-api-service on port 80 inside the production namespace.
+# 3. Deploy the Cross-Namespace Client:
+
+# Create a manifest named client-pod.yaml.
+# Define a Pod named cross-ns-client using the busybox image.
+# Deploy this pod in the default namespace.
+# The Fix: To prove you can reach the production service, configure the cross-ns-client container to run a continuous loop that fetches the webpage from the prod-api-service using its FQDN.
+# Use this exact command array: command: ["sh", "-c", "while true; do wget -qO- prod-api-service.production.svc.cluster.local; sleep 5; done"]
+# Expected Outcome
+# A namespace production exists.
+# A deployment and service exist inside production.
+# A client pod in the default namespace is successfully fetching data across the namespace boundary using the correct CoreDNS FQDN structure.
+
+
+
+
+#Client-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: cross-ns-client
+  namespace: default
+spec:
+  containers:
+    - name: busybox
+      image: busybox
+      command: ["sh", "-c", "while true; do wget -qO- prod-api-service.production.svc.cluster.local; sleep 5; done"]
+
+
+kubectl create ns production
+kubectl -n production create deployment prod-api --image=nginx
+kubectl -n production expose deployment prod-api --port=80 --target-port=80 --name=prod-api-service --type=ClusterIP
+kubectl exec -it cross-ns-client -- /bin/sh
