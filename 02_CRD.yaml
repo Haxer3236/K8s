@@ -1,0 +1,119 @@
+# The Strict Schema Enforcement
+# Solved
+# Guide for using Scaler IDE to solve DevOps problems.
+# feature icon
+# Using hints except Complete Solution is Penalty free now
+# Use Hint
+# Description
+# Scenario:
+
+# Your Platform Engineering team wants to offer developers a self-service database provisioning tool. Instead of writing a complex Validating Admission Webhook to ensure developers don't request overly expensive or unsupported databases, you decide to use native CustomResourceDefinition (CRD) schema validation.
+
+# You will deploy a CRD named DatabasePolicy that enforces strict guardrails: Developers can only choose specific database engines, they cannot request more than 5 replicas, and they must provide a valid internal billing code (Cost Center) that perfectly matches your corporate regex format.
+
+# Your Mission:
+
+# You must deploy the strict CRD, purposefully apply a malformed Custom Resource (CR) to trigger the API server's validation gates, analyze the rejection errors, and engineer a compliant CR that successfully passes the schema checks.
+
+# Requirements:
+
+# 1. Infrastructure Preparation:
+
+# Perform all Custom Resource (CR) deployments in a new namespace named schema-lab.
+# 2. The Strict CRD Deployment:
+
+# Deploy a CustomResourceDefinition named databasepolicies.ops.example.com. Feel free to research on the syntax.
+# API Details: Group ops.example.com, Version v1, Kind DatabasePolicy, Scope Namespaced.
+# Schema Validation (OpenAPI v3):
+# spec.engine: Must be a string. Must be restricted to an enum of exactly two values: "postgres" or "mysql".
+# spec.replicas: Must be an integer. Must have a minimum of 1 and a maximum of 5.
+# spec.costCenter: Must be a string. Must match the regex pattern ^[A-Z]{3}-[0-9]{4}$ (e.g., "ENG-1234").
+# 3. The Validation Test (Malformed CR):
+
+# Attempt to create a CR named my-policy with engine: redis, replicas: 10, and costCenter: engineering.
+# Observe the API server violently rejecting the manifest.
+# 4. The Compliant Resource:
+
+# Fix your CR manifest to satisfy the OpenAPI v3 schema.
+# Successfully apply the compliant CR.
+# Outcome
+# Mastered CustomResourceDefinitions (CRDs) as an API extension mechanism.
+# Implemented native OpenAPI v3 Validation (Enums, Min/Max, Regex Patterns) to enforce business logic without writing external webhooks.
+# Navigated common senior-level debugging scenarios by translating API Server Rejection Errors into actionable YAML fixes.
+
+
+
+<----------------------------------------------------------------------------------------------->
+Complete Solution
+Step 1: Deploy the Strict CRD
+Create a file named crd.yaml and paste the following schema:
+
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: databasepolicies.ops.example.com
+spec:
+  group: ops.example.com
+  names:
+    kind: DatabasePolicy
+    plural: databasepolicies
+    singular: databasepolicy
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            required: ["engine", "replicas", "costCenter"]
+            properties:
+              engine:
+                type: string
+                enum: ["postgres", "mysql"]
+              replicas:
+                type: integer
+                minimum: 1
+                maximum: 5
+              costCenter:
+                type: string
+                pattern: "^[A-Z]{3}-[0-9]{4}$"
+Apply the CRD:
+
+kubectl apply -f crd.yaml
+kubectl create namespace schema-lab
+Step 2: Trigger the API Rejection (The Malformed CR)
+Create a file named bad-cr.yaml:
+
+apiVersion: ops.example.com/v1
+kind: DatabasePolicy
+metadata:
+  name: my-policy
+  namespace: schema-lab
+spec:
+  engine: "redis"
+  replicas: 10
+  costCenter: "engineering"
+Attempt to apply it. You will see the API server instantly reject it with a detailed error message explaining exactly which schema rules were violated:
+
+kubectl apply -f bad-cr.yaml
+Step 3: Engineer and Apply the Compliant CR
+Create a file named good-cr.yaml with valid parameters:
+
+apiVersion: ops.example.com/v1
+kind: DatabasePolicy
+metadata:
+  name: my-policy
+  namespace: schema-lab
+spec:
+  engine: "postgres"
+  replicas: 3
+  costCenter: "DEV-9921"
+
+Apply it and verify it successfully bypassed the schema guardrails!
+
+kubectl apply -f good-cr.yaml
+kubectl get databasepolicies -n schema-lab
