@@ -1,0 +1,68 @@
+# Q1. Direct Pod Discovery with Headless Services
+# Solved
+# Guide for using Scaler IDE to solve DevOps problems.
+# feature icon
+# Using hints except Complete Solution is Penalty free now
+# Use Hint
+# Scenario
+# In previous exercises, you might have used standard ClusterIP Services, which provide a single Virtual IP (VIP) to load balance traffic across multiple Pods. However, some distributed systems (like databases, clusters, or custom stateful applications) need to communicate directly with specific Pods rather than through a randomized load balancer.
+
+# To achieve this, Kubernetes offers Headless Services. By explicitly setting clusterIP: None, you instruct Kubernetes to bypass the load balancer layer. Instead, it configures the internal DNS to return the IP addresses of the individual Pods directly when the service name is queried.
+
+# Task
+# Working directory: /home/user
+
+# 1. Create the Workload:
+
+# Create a Deployment named backend-app.
+# Use the image nginx:alpine.
+# Set replicas to 3.
+# Note: When using the imperative command, Kubernetes automatically applies the label app: backend-app to your Pods.
+# 2. Create a Headless Service:
+
+# Create a Service manifest named headless-svc.yaml.
+# Name the Service backend-headless.
+# Critical: Set the clusterIP field to None (case-sensitive).
+# Selector: Ensure the selector matches the Deployment's label (app: backend-app).
+# Ports: Expose port 80 (targetPort 80).
+# 3. Verify DNS Resolution:
+
+# Apply the manifest.
+# Verify that the Service has CLUSTER-IP: None.
+# Verify that the Service has successfully found the Pod endpoints (the IPs of your 3 replicas).
+# Expected Outcome
+# A Deployment backend-app is running with 3 replicas.
+# A Service backend-headless exists.
+# The Service has ClusterIP: None.
+# The Service Endpoints list contains the 3 unique IP addresses of your Pods.
+
+# Complete Solution
+# 1. Create the Deployment
+
+kubectl create deployment backend-app --image=nginx:alpine --replicas=3
+
+#2. Create the Headless Service Manifest
+vi headless-svc.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-headless
+spec:
+  clusterIP: None  # This makes it Headless
+  selector:
+    app: backend-app # Matches the deployment name
+  ports:
+  - port: 80
+    targetPort: 80
+
+3. Apply and Verify
+
+kubectl apply -f headless-svc.yaml
+
+# Verify it is headless (IP should be None)
+kubectl get svc backend-headless
+
+# Verify endpoints (Should show 3 IPs)
+kubectl get endpoints backend-headless
+
