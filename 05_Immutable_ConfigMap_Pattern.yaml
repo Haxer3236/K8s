@@ -1,0 +1,150 @@
+# Description
+# Scenario:
+
+# Your company uses a single ConfigMap (prod-config) to store the database connection string. A developer updates the ConfigMap in place (changing db_url from v1.database.local to v2.database.local), and triggers a rollout restart of the Deployment.
+
+# Disaster strikes: The new v2 database is down. The pods crash.
+
+# The developer panics and immediately runs kubectl rollout undo deployment/api-server. The pods restart and rollback to the previous image… but they still crash.
+
+# You must explain the Immutable Configuration Pattern: Deployments track changes to the Pod Template (like image tags), but they do not track the state of external objects like ConfigMaps. When the developer rolled back the Deployment, it still read from the live prod-config ConfigMap, which was still pointing to the broken v2 database!
+
+# Your Mission:
+
+# Deploy the broken "in-place update" architecture and watch the rollback fail. Then, refactor the architecture to use the "Immutable Config Pattern" by creating uniquely versioned ConfigMaps (prod-config-v1, prod-config-v2), ensuring that a deployment rollback always points to the exact configuration version it was originally tested with.
+
+# Environment Details:
+
+# Sudo Password: admin@123! (If required)
+# Tasks
+# Task 1: Deploy the V1 Architecture. Create a namespace named immutable-lab. Deploy a ConfigMap named prod-config-v1 containing db_url: "v1.database.local". Deploy the api-server Deployment referencing prod-config-v1.
+
+# Task 2: The Immutable Update (V2). To update the database URL safely, you will NOT overwrite prod-config-v1. Instead, create a brand new ConfigMap named prod-config-v2 containing db_url: "v2.database.local".
+
+# Task 3: Update the Deployment. Update the api-server Deployment manifest to reference prod-config-v2 instead of v1. Apply the updated Deployment. This inherently triggers a rollout.
+
+# Task 4: The Safe Rollback. Assume v2 is broken. Execute kubectl rollout undo deployment api-server -n immutable-lab. Because you versioned the ConfigMap, the Deployment will safely revert to pointing at prod-config-v1, restoring the system instantly!
+
+# File-wise Requirements
+# 01-v1-architecture.yaml
+
+# Create the immutable-lab Namespace.
+
+# Create the prod-config-v1 ConfigMap (db_url: "v1.database.local").
+
+# Create the api-server Deployment with pod template label api-server.
+
+# Image: busybox, Command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+
+# Map an environment variable named DB_URL pointing to prod-config-v1.
+
+# 02-v2-architecture.yaml
+
+# Create a new ConfigMap named prod-config-v2 (db_url: "v2.database.local").
+
+# Update the api-server Deployment YAML. Change the configMapKeyRef to point to prod-config-v2.
+
+# Expected Outcome:
+
+# Both prod-config-v1 and prod-config-v2 exist simultaneously in the cluster.
+# 
+#Updating the deployment to use v2 creates a new ReplicaSet.
+# Rolling back the deployment flawlessly points the pods back to the v1 configuration, proving that configuration state is now firmly coupled to the deployment history.
+
+<---------------------------------------------------------------->
+
+Complete Solution
+Step 1: Deploy the V1 Architecture
+Create a file named 01-v1-architecture.yaml and paste the following:
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: immutable-lab
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prod-config-v1
+  namespace: immutable-lab
+data:
+  db_url: "v1.database.local"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: immutable-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+    spec:
+      containers:
+        - name: app
+          image: busybox
+          command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: prod-config-v1
+                  key: db_url
+Apply the baseline:
+
+kubectl apply -f 01-v1-architecture.yaml
+Step 2: Deploy the V2 Architecture (The Immutable Update)
+Create a file named 02-v2-architecture.yaml:
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prod-config-v2
+  namespace: immutable-lab
+data:
+  db_url: "v2.database.local"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-server
+  namespace: immutable-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-server
+  template:
+    metadata:
+      labels:
+        app: api-server
+    spec:
+      containers:
+        - name: app
+          image: busybox
+          command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+          env:
+            - name: DB_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: prod-config-v2 # Point to the new ConfigMap!
+                  key: db_url
+Apply the update:
+
+kubectl apply -f 02-v2-architecture.yaml
+kubectl rollout status deployment/api-server -n immutable-lab
+Step 3: Execute the Safe Rollback
+Simulate a failure in V2 and roll back:
+
+kubectl rollout undo deployment api-server -n immutable-lab
+kubectl rollout status deployment/api-server -n immutable-lab
+Verify the rollback worked by checking the running pod:
+
+POD_NAME=$(kubectl get pods -n immutable-lab -l app=api-server -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}')
+kubectl exec $POD_NAME -n immutable-lab -- env | grep DB_URL
+# Output should safely be back to: DB_URL=v1.database.local
