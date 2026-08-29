@@ -1,0 +1,72 @@
+# Scenario:
+
+# Your organization is migrating from the legacy Cluster Autoscaler to Karpenter to achieve faster node provisioning and better cost optimization.
+
+# Instead of relying on rigid, pre-defined Auto Scaling Groups, you need to configure Karpenter to dynamically select the best-fit instances for your pending pods. Furthermore, management has mandated that the cluster must continuously evaluate running nodes and pack pods more tightly to eliminate wasted resources.
+
+# Objective:
+
+# Create a Karpenter Provisioner configuration that defines the rules for launching new nodes and enables cost-optimizing consolidation.
+
+# Tasks:
+
+# 1. Define the Provisioner:
+
+# Create a manifest named karpenter-provisioner.yaml.
+# API Version: karpenter.sh/v1alpha5
+# Kind: Provisioner
+# Name: default
+# 2. Configure Requirements:
+
+# Restrict the capacity type so Karpenter only provisions on-demand instances. (Key: karpenter.sh/capacity-type)
+# Restrict the instance categories to only Compute and General Purpose families: c and m. (Key: karpenter.k8s.aws/instance-category)
+# 3. Configure Limits & Provider:
+
+# Set the cluster-wide resource limits to a maximum of 1000 CPU and 1000Gi Memory.
+# Point the providerRef to the default AWS Node Template.
+# 4. Enable Cost Optimization:
+
+# Enable Consolidation so Karpenter can actively terminate underutilized nodes and reschedule pods onto cheaper or fewer instances.
+# 5. Apply the Configuration:
+
+# Apply the manifest to the cluster.
+# Expected Outcome:
+
+# A Provisioner named default is successfully created.
+# The provisioner correctly enforces "on-demand" and "c/m" instance requirements.
+# Consolidation is set to true.
+
+# Complete Solution (Each and Every Step)
+# 1. Create the Manifest:
+
+# vi karpenter-provisioner.yaml
+
+# 2. Paste the following configuration:
+
+apiVersion: karpenter.sh/v1alpha5
+kind: Provisioner
+metadata:
+  name: default
+spec:
+  requirements:
+    - key: karpenter.sh/capacity-type
+      operator: In
+      values: ["on-demand"]
+    - key: karpenter.k8s.aws/instance-category
+      operator: In
+      values: ["c", "m"]
+  limits:
+    resources:
+      cpu: 1000
+      memory: 1000Gi
+  providerRef:
+    name: default
+  consolidation:
+    enabled: true
+
+# 3. Save and Exit:
+# Press Esc, type :wq, and press Enter.
+
+# 4. Apply the Configuration:
+
+# kubectl apply -f karpenter-provisioner.yaml
