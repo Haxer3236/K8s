@@ -1,0 +1,304 @@
+Q.1 When scaling infrastructure from a few servers to hundreds, 
+what is the primary operational risk of relying on a 
+"Command and Execute" (Traditional) management style?
+Ans. The system lacks a central memory of intent, meaning no automatic
+ recovery occurs if a process dies after the command executes.
+
+Q.2 In a scenario where multiple engineers try to modify the cluster state simultaneously (e.g., scaling a deployment and updating an image), how does the API Server prevent conflicts and inconsistent states?
+Ans. It acts as a single source of truth, validating and updating the stored state atomically, ensuring no overwrites occur.
+
+Q.3 Why does the Kubernetes API Server not handle tasks like scheduling pods or restarting crashed containers directly?
+Ans. To avoid creating a monolithic single point of failure and to allow for specialized, replaceable components (like custom schedulers).
+
+Q.4 Which of the following best describes the specific "Reconciliation Loop" logic used by a Controller (e.g., ReplicaSet Controller)?
+Ans. It continuously asks "What should exist?" and "What actually exists?", then acts to eliminate the difference.
+
+Q.5 What is the precise, limited responsibility of the Scheduler component in Kubernetes?
+Ans. It filters and scores nodes to find the best fit, then updates the Pod specification with the assigned nodeName.
+
+Q.6 Why does Kubernetes use etcd for storage instead of keeping the cluster state in the API Server's memory?
+Ans.etcd provides persistence (surviving crashes) and distributed consistency (ensuring all components see the same state).
+
+
+
+Q.7 Why does Kubernetes use the "Pod" as the smallest deployable unit rather than scheduling individual containers directly?
+Ans. To ensure that related containers always share the same node, network namespace, and lifecycle.
+
+Q.8 When a Pod is deleted, Kubernetes follows a specific termination sequence. What is the correct order of operations?
+Ans. SIGTERM is sent to all containers; if they are still running after the grace period, SIGKILL is sent.
+
+Q.9 You have a batch processing workload defined with restartPolicy: OnFailure. If the container finishes its task and exits with code 0, what does the Kubelet do? 
+Ans. It marks the Pod as "Succeeded" and does not restart the container.
+
+Q.10 A Pod is configured with two Init Containers: setup-config and wait-for-db. If setup-config (the first one) fails and exits with a non-zero code, what happens next?
+Ans. The Pod retries the setup-config container from the beginning.
+
+Q.11 In a multi-container Pod, which of the following resources is ISOLATED (not shared) between containers by default?
+Ans. The Filesystem (excluding mounted volumes).
+
+Q.12 A container in your Pod has a memory limit of 256Mi. If the container process tries to consume 300Mi of memory, what action does Kubernetes take?
+Ans. It terminates (OOMKills) the container.
+
+Q.13 Your Pod is stuck in the Pending state. You run kubectl describe pod and see a FailedScheduling event. What is the most likely cause?
+Ans. The cluster nodes do not have enough available resources (CPU/Memory) to meet the Pod's requests.
+
+Q.14 A container is in CrashLoopBackOff. You need to see the error logs from the previous instance that crashed (not the currently restarting one). Which command should you use?
+Ans. kubectl logs myapp -c container-name --previous
+
+Q.15 You deploy a single Pod directly to a node to serve a production API. If that node crashes due to a hardware failure, what is the expected behavior of the Kubernetes control plane?
+Ans. It takes no action; the Pod remains dead until a human manually recreates it or the node recovers.
+
+Q.16 A ReplicaSet is configured with replicas: 5 and selector app: api. You currently have 5 running Pods managed by this ReplicaSet. If you manually create a new, separate Pod with the label app: api, what will the ReplicaSet controller do immediately?
+Ans. It will adopt the new Pod and then terminate one Pod (either the new one or an old one) to return to 5 replicas.
+
+Q.17     Virtual IPs & kube-proxy
+Solved
+A Service in Kubernetes is described as a "Virtual IP" that doesn't actually exist on a network interface. When a Pod sends a packet to a Service IP (ClusterIP), what mechanism on the node intercepts and redirects the traffic?
+Ans. kube-proxy configures iptables rules to perform Destination NAT (DNAT).
+
+Q.18 Q3. NodePort routing Behavior
+Solved
+You have a 3-node cluster and create a NodePort Service on port 30080. The Pods backing this Service happen to be running only on Node 3. If an external client connects to Node 1 on port 30080, what happens?
+Ans. The connection succeeds; kube-proxy on Node 1 forwards the traffic internally to the Pod on Node 3.
+
+Q.19 4. Ingress vs. LoadBalancer
+Unsolved
+You are designing a cluster for a startup that has 20 distinct HTTP microservices. Why would you typically choose an Ingress Controller over creating a standard LoadBalancer Service for each microservice?
+Ans. To reduce cloud costs by sharing a single external Load Balancer and routing traffic based on Host/Path.
+
+Q.20 Q5. The Complete Traffic Flow
+Solved
+In a standard production setup using an NGINX Ingress Controller, what is the correct hop-by-hop path for an external HTTP request reaching your application?
+Ans. External User -> Cloud LB -> NodePort -> Ingress Controller Pod -> Service (ClusterIP) -> Application Pod.
+
+Q.21 Headless Services
+Solved
+Why is a Headless Service (clusterIP: None) typically required when deploying a StatefulSet like a Database, rather than a standard Service?
+Ans. To allow clients (or peers) to resolve the specific IP addresses of individual Pods directly via DNS.
+
+Q.22 . Services in K8s
+Solved
+You are migrating a legacy application to Kubernetes. The app code tries to connect to a database at http://db-prod. However, the actual database still lives outside the cluster at db.legacy-corp.com. Which Service type allows you to map the internal name to the external DNS name?
+Ans. ExternalName
+
+Q.23  Network Policy
+Solved
+You apply a Network Policy that selects your backend Pods (podSelector: matchLabels: app: backend) but does not specify any ingress rules. What is the immediate effect on traffic to those Pods?
+Ans. All incoming traffic to the backend Pods is blocked (Implicit Default Deny).
+
+Q.24  Troubleshooting Signals
+Solved
+You are debugging a connectivity issue. When you run nc -z -v <ip> <port> from a client Pod, you receive a "Connection Timed Out" error. What is the most likely cause?
+Ans. A Network Policy or Firewall is silently dropping the packets.
+
+Q.25 The Scaling Layers
+Solved
+You are designing a scaling strategy for an e-commerce platform. You need a mechanism that can respond to sudden traffic spikes in seconds to minutes by adding more replicas of your application. Which scaling layer and tool is appropriate for this specific "fast response" requirement?
+Ans. Layer 1: Horizontal Pod Autoscaler (Pod Count Level)
+
+Q.26 Q10. Resolving Autoscaler Configurations
+Solved
+An engineering team configures a Horizontal Pod Autoscaler (HPA) to scale a deployment based on a target of 70% CPU utilization. Simultaneously, they deploy a Vertical Pod Autoscaler (VPA) set to "Auto" mode to manage the same deployment's CPU requests. What is the expected behavior of this cluster configuration?
+Ans. The autoscalers will conflict and create instability, because the VPA continually alters the baseline resource requests that the HPA uses to calculate its utilization percentage.
+
+Q.27 HPA Dependencies
+Solved
+You have deployed an application and configured an HPA to maintain 50% CPU utilization. However, when you run kubectl get hpa, the TARGETS column displays <unknown>/50%, and the HPA fails to scale. What is the most likely cause?
+Ans. The Pods do not have Resource Requests defined in their manifest.
+
+Q.28 . VPA Operation Modes
+Solved
+You have an existing production deployment with undersized pods that are constantly throttling. You want to implement Vertical Pod Autoscaling (VPA) to automatically evict these pods and recreate them with correct sizing. Which updateMode must be configured?
+Ans. "Auto"
+
+Q.29 HPA & VPA Conflict
+Solved
+What is the reason for warning against running HPA and VPA on the same metric (e.g., both on CPU) for the same Deployment?
+Ans. It causes "Thrashing": HPA adds pods to lower average CPU, while VPA increases pod size to handle load, leading to a conflict loop.
+
+Q.30 . Cluster Autoscaler Triggers
+Solved
+Many users incorrectly assume the Cluster Autoscaler (CA) adds nodes when CPU usage is high. What is the actual specific trigger that causes the CA to provision a new node?
+Ans. When a Pod enters the Pending state because no existing node has enough capacity to schedule it.
+
+Q.31 Scale-Up Latency
+Solved
+In the "Flash Sale" scenario, the HPA scaled the pods instantly, but users still experienced errors for ~8 minutes. What is the primary cause of this delay during the Cluster Autoscaler operations?
+Ans. The physical time required to provision a VM (Cloud API), boot the OS, and register the Kubelet.
+
+
+CRD & CNI
+----------------------------------------------------------------------------------------
+Q.32
+Q4. Advanced API Lifecycle Expansion
+Solved
+Your team is upgrading a CustomResourceDefinition from v1beta1 to v1. The new version fundamentally restructures the JSON payload of the spec field. How does the Kubernetes API server handle clients that continue to submit resources using the old v1beta1 schema so that no data is lost or corrupted in etcd?
+Ans. 
+The cluster administrator must configure and deploy a Conversion Webhook that intercepts the request and dynamically translates the old schema to the new schema.
+
+Q.33 . Network Topologies and Overhead
+Unsolved
+You are managing a Kubernetes cluster deployed across multiple distinct physical datacenters. You choose a CNI that utilizes an Overlay network (VXLAN). During a load test, small API requests (GET) succeed instantly, but large database payloads (POST) consistently timeout and drop packets. What is the most likely root cause?
+Ans.
+ The Pod network interface MTU is set to 1500, failing to account for the ~50-byte VXLAN encapsulation header, causing packet fragmentation failure.
+
+Q.34  Resource Deletion Mechanics
+Solved
+A junior engineer executes kubectl delete postgresql production-db. Ten minutes later, the resource is still listed when querying the API, but its status shows as Terminating. You inspect the operator's pod logs and find it crashed due to an OutOfMemory (OOM) error an hour ago. What exact API-level mechanism is preventing the resource from disappearing?
+Ans.
+ The resource's metadata.finalizers array contains a string, instructing the API server to block deletion until the operator explicitly removes the string.
+
+Q.35 Dataplane Isolation Capabilities
+Solved
+To pass a strict security audit, your team applies a default-deny NetworkPolicy to the finance namespace, intending to block all ingress and egress traffic. However, during a penetration test, pods in the default namespace are still able to curl the finance pods successfully. You verify the YAML is syntactically perfect. What is the architectural reason for this failure?
+Ans.
+The cluster is utilizing the Flannel CNI, which handles IP allocation and routing but completely ignores NetworkPolicy API objects.
+
+Q.36 Q8. Reconciler State Enforcement
+Solved
+Your team uses a third-party Operator to manage an Elasticsearch cluster via a Custom Resource. During a live incident, an engineer manually edits the generated Elasticsearch ConfigMap using kubectl edit to increase the JVM heap size and restarts the pods. Three minutes later, the JVM heap size reverts back to the original value, and the pods restart again. What happened?
+Ans.
+The Operator's reconciliation loop detected that the actual cluster state (the edited ConfigMap) drifted from the desired state (the Custom Resource spec) and overwrote the manual changes.
+
+Q.37API Schema Architecture
+Solved
+You define a CRD with a field named replicas and specify its type as an integer. A developer attempts to apply a Custom Resource YAML where replicas: "3" (as a string). At what exact stage of the Kubernetes request flow is this resource rejected?
+Ans. 
+At the API Server validation phase, before the object is ever persisted to etcd or seen by the admission controllers.
+
+Q.38
+Your high-frequency trading application requires absolute minimum network latency. You decide to migrate away from a standard routed CNI (which uses iptables and conntrack for packet filtering and NAT) to a CNI like Cilium. What Linux kernel technology does this CNI utilize to achieve near-native packet processing speeds by bypassing the standard network stack?
+Ans.
+eBPF (Extended Berkeley Packet Filter)
+
+Q.39Large-Scale IP Address Management
+Solved
+In a cluster with 500 nodes, an autoscaling group abruptly terminates 50 worker nodes without allowing them to gracefully drain. The next day, 50 new nodes join the cluster. However, all new pods scheduled on these nodes are permanently stuck in ContainerCreating. Examining the kubelet logs reveals IPAM: no IPs available in pool. What is the root cause?
+ans.
+ The CNI suffered from "IP Leaking." Because the old nodes died abruptly, the IPAM plugin never reclaimed their allocated IP blocks, exhausting the cluster's CIDR range.
+
+ Q.40  Subresource Privilege Separation
+Solved
+You are writing a custom Operator. Your Operator pod successfully reads a Custom Resource, provisions the required Deployments, but throws a 403 Forbidden error when attempting to update the CR's status.phase to "Ready". You verify the Operator's ServiceAccount has [get, list, watch, create, update, patch, delete] verbs for your custom resource group. What is missing?
+Ans.
+The RoleBinding needs explicit RBAC permissions for the customresources/status subresource; standard permissions only apply to the spec and metadata.
+
+Q.41 A pod attempts to make an HTTP request to http://billing-svc.default.svc.cluster.local. The request fails. You exec into a netshoot debug pod and run nc -zv <billing-svc-cluster-ip> 80, which succeeds. However, running nslookup billing-svc.default fails with a timeout. Which component is fundamentally failing in this scenario?
+Ans.
+ CoreDNS.
+
+
+ <--------------------------------------------------------------------------------->
+ ConfigMap and Secret
+
+ Q. Data Obfuscation vs. Cryptography
+Solved
+During a security audit, a compliance officer notes that Kubernetes Secrets are merely Base64 encoded and demands to know how they are protected from a physical node compromise. Assuming standard Kubernetes architecture, where and how are these secrets actually secured against physical drive theft?
+Ans. 
+    They are stored strictly in tmpfs (RAM) on the worker node and are never written to the physical disk. Encryption at rest must be configured separately at the etcd database layer.
+
+Q. . Configuration Mutability Constraints
+Solved
+You mount a ConfigMap containing a custom app.properties file into your Pod using a standard volumeMount. You update the ConfigMap in the cluster using kubectl apply. Three minutes later, you exec into the Pod and verify that the file on disk has indeed updated. However, the Java Spring Boot application is still exhibiting the old behavior. Why?
+Ans. The application read the file into memory during its startup routine and does not have internal logic configured to "hot reload" or watch the file for changes.
+
+Q. . Volume Mount Propagation Limitations
+Solved
+A developer mounts a specific configuration file from a ConfigMap into an existing directory populated with other essential files. To prevent overwriting the entire directory, they use the subPath directive in their deployment YAML. What is the architectural consequence of this decision?
+Ans. 
+    The file will be successfully mounted without overwriting the directory, but it will be severed from the Kubelet sync loop. Future updates to the ConfigMap will never propagate to the running container.
+
+Q9. Memory Space Exfiltration Vectors
+Solved
+Your security team mandates that all application configurations must be mounted as Volumes rather than injected as Environment Variables. What is the primary operational security risk that this policy mitigates?
+Ans. Environment variables are frequently exposed in application crash dumps, stack traces, and the container's /proc/1/environ virtual file, increasing the risk of credential leakage.
+
+Q10. Lifecycle Scheduling Errors
+Solved
+A junior engineer deploys a Pod that relies on a Secret for its database credentials. The Pod immediately gets stuck in the CreateContainerConfigError state. Which of the following is the most likely root cause?
+
+Ans. The specified secretName in the Pod manifest contains a typo, or the target key does not exist within the referenced Secret.
+
+Q2. Base64 String Anomalies
+Solved
+An application crashes on startup with an "Authentication Failed" error. The database password is admin123. The engineer generated the Base64 string using the command: echo "admin123" | base64. Why is the application rejecting the password when it mounts the Secret?
+
+Ans. The echo command automatically appends a hidden newline character (\n) to the end of the string before piping it to the base64 utility, corrupting the decoded password.
+
+Q3. Asynchronous Sync Mechanics
+Solved
+You update a ConfigMap that is mounted as a volume in a running Pod. You immediately run kubectl exec to check the file inside the container, but it still shows the old configuration. Knowing that subPath was NOT used, what is the expected K8s behavior?
+Ans. The Kubelet runs an asynchronous sync loop that updates projected volumes periodically. It will take approximately 60 seconds for the file to automatically update.
+
+Q4. Decoupled State Rollbacks
+Solved
+Your deployment relies on configmap-v1. You update the ConfigMap in place to change the database URI, and the application crashes. You immediately run kubectl rollout undo deployment/my-app. The pod restarts, but it crashes again. Why did the rollback fail to restore service?
+
+Ans. Deployments track changes to the Pod Template (like image tags), but they do not track the state of external objects. The rollback restored the old Pod definition, but the ConfigMap it mounts is still the broken, updated version.
+
+Q5. Identity & Access Delegation
+Solved
+A developer has an RBAC Role that allows them to create and get Pods, Deployments, and ConfigMaps, but strictly forbids them from get or list operations on Secrets. If this developer applies a Pod manifest that mounts a pre-existing Secret named db-creds, what happens?
+
+Ans. The Pod successfully starts and mounts the Secret. The authorization to mount the Secret belongs to the Pod's ServiceAccount, not the human user who deployed it.
+
+Q6. Environment State Capture
+Solved
+Why does updating a ConfigMap successfully update a volume-mounted file, but fail to update an environment variable injected from that exact same ConfigMap?
+Ans. Environment variables are injected into the container's process memory space exactly once during the exec startup sequence. Kubernetes cannot hot-patch the RAM of a running Linux process.
+
+<--------------------------------------------------------------------------------->
+Troubleshooting
+
+Q6. Controller Failure Hierarchies
+Solved
+You apply a standard Deployment manifest requesting 3 replicas. When you run kubectl get pods, the output is completely empty. There are no pods in the Pending, Error, or CrashLoopBackOff states. What is the most highly probable root cause, and where should you look first to confirm it?
+Ans. The namespace has a ResourceQuota blocking pod creation; check the events of the underlying ReplicaSet.
+
+Q7. Access Control Mechanics
+Solved
+You are debugging an RBAC issue. A ServiceAccount named ci-bot is bound to a Role that explicitly grants the get and watch verbs for the pods resource. However, when the CI/CD pipeline attempts to run kubectl get pods -n prod, it is rejected with a 403 Forbidden error. Why?
+Ans. The get verb only allows the user to request a single, specifically named pod. To retrieve a collection of pods, the Role must explicitly include the list verb.
+
+Q8. Storage Access Constraints
+Solved
+A database is deployed using a Deployment with a ReadWriteOnce (RWO) PersistentVolumeClaim. When you update the container image tag to trigger a new rollout, the new pod hangs indefinitely in the ContainerCreating state, citing a "Multi-Attach" error. What is the architectural reason for this failure?
+Ans. RWO volumes can only be attached to a single Pod at a time. The default RollingUpdate strategy requires both the old and new pod to run simultaneously, causing a node-level volume lock conflict.
+
+Q9. State Synchronization
+Solved
+You have an application that ingests its logging verbosity via an environment variable mapped from a ConfigMap. You update the ConfigMap from INFO to DEBUG. Five minutes later, the running pod is still logging at the INFO level. What is the exact reason for this behavior?
+
+Ans. Environment variables are injected exactly once into the container's process memory during the initial exec startup sequence. They cannot be hot-patched by Kubernetes at runtime.
+
+Q10. Garbage Collection Blockers
+Solved
+You attempt to delete a rogue Pod, but it becomes permanently stuck in the Terminating state. You verify that the worker node hosting the pod is healthy and reachable. What is the most direct way to force the API server to completely remove the Pod object from the cluster state?
+
+Ans.Inspect the Pod's metadata and JSON patch the finalizers array to be null.
+
+Q2. Traffic Routing Anomalies
+Solved
+You have two Deployments: api-v1 and api-v2. Both share the label app: api. You create a Service intended exclusively for api-v1. However, load tests reveal that 50% of the traffic is randomly failing, and logs show requests are bleeding into the api-v2 pods. How do you immediately diagnose this using the command line?
+Ans. Run kubectl get endpoints and verify if the IP addresses map to pods from both Deployments.
+
+Q3. Impersonation Testing
+Solved
+You are a cluster administrator. A developer claims their ServiceAccount (deploy-bot) is getting permission denied errors when trying to create deployments in the staging namespace. What is the fastest command to verify their exact permissions without needing to extract their authentication token?
+Ans. kubectl auth can-i create deployments --as=system:serviceaccount:staging:deploy-bot -n staging
+
+Q4. Deployment Strategy Refactoring
+Solved
+To fix a Multi-Attach volume error caused by a RollingUpdate strategy on an RWO volume, you must modify the Deployment's upgrade behavior. Which strategy instructs Kubernetes to completely terminate all existing pods before attempting to spawn the newly updated pods?
+Ans. Recreate
+
+Q5. Finalizer Mechanics
+Solved
+When an external controller injects a string like kubernetes.io/pv-protection into an object's finalizers array, what exact mechanical instruction is it giving to the Kubernetes API server?
+Ans. "If a deletion is requested, set a deletionTimestamp but do not garbage collect this object until the managing controller removes this string."
+
+Q6. Mitigating Configuration Drift
+Solved
+Your team constantly forgets to restart Deployments after updating their associated ConfigMaps, leading to severe configuration drift. What is the industry-standard best practice to automate this process in a GitOps workflow (e.g., using Helm or Kustomize)?
+Ans. Inject a cryptographic hash (checksum) of the ConfigMap contents directly into the Deployment's Pod Template annotations.
+
