@@ -1,0 +1,187 @@
+<!-- Description
+Scenario:
+
+Your team has built a custom Kubernetes Operator to manage AppConfig resources. The Operator reads the developer's desired state from the spec, provisions the underlying infrastructure, and then attempts to update the status.phase of the Custom Resource to "Ready" so the developers know it finished successfully.
+
+However, the pipeline is failing. The Operator pod is running, but the AppConfig status remains empty. You check the Operator's logs and see a continuous stream of 403 Forbidden errors. The junior engineer who wrote the RBAC manifests insists they granted the operator-sa ServiceAccount full get, list, watch, patch, update permissions for the appconfigs resource.
+
+Your Mission:
+
+You must deploy the broken baseline architecture, analyze the Operator's logs, and fix the RBAC Role. You must grant the Operator the exact permissions required to update the status, without giving it permission to overwrite the entire Custom Resource object.
+
+Requirements:
+
+1. Deploy the Baseline Architecture:
+
+You will apply two pre-written YAML manifests crd.yaml and workload.yaml present in /home/user/. The first sets up the Namespace and CRD. The second creates the my-app Custom Resource, the flawed RBAC Role/Binding, and a mock Operator Pod.
+
+You will observe the failure by reading the logs of the mock Operator Pod.
+
+2. Diagnose and Fix the RBAC Role:
+
+Inspect the Role named operator-role in the rbac-lab namespace.
+Currently, it only has access to resources: ["appconfigs"].
+You must update this Role to explicitly include the appconfigs/status subresource, granting it the get, patch, and update verbs.
+3. Verify the Reconciliation:
+
+Once the RBAC is fixed, the mock Operator Pod will automatically succeed on its next retry loop.
+Verify the CR's status has been successfully updated to "Ready".
+Outcome
+Mastered API Subresources by understanding the cryptographic boundary between a Custom Resource's spec (user-owned) and status (controller-owned).
+Diagnosed and resolved RBAC 403 Forbidden errors resulting from missing granular privileges.
+Implemented the Principle of Least Privilege in Operator design. -->
+
+crd.yaml ->
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: rbac-lab
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: appconfigs.ops.example.com
+spec:
+  group: ops.example.com
+  names:
+    kind: AppConfig
+    plural: appconfigs
+    singular: appconfig
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    subresources:
+      status: {} # Enables the status subresource
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              image:
+                type: string
+          status:
+            type: object
+            properties:
+              phase:
+                type: string
+workload.yaml ->
+apiVersion: ops.example.com/v1
+kind: AppConfig
+metadata:
+  name: my-app
+  namespace: rbac-lab
+spec:
+  image: "nginx:latest"
+---
+# The Flawed RBAC Identity
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: operator-sa
+  namespace: rbac-lab
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: operator-role
+  namespace: rbac-lab
+rules:
+- apiGroups: ["ops.example.com"]
+  resources: ["appconfigs"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+# FLAW: Missing the appconfigs/status resource!
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: operator-binding
+  namespace: rbac-lab
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: operator-role
+subjects:
+- kind: ServiceAccount
+  name: operator-sa
+  namespace: rbac-lab
+---
+# The Mock Operator
+apiVersion: v1
+kind: Pod
+metadata:
+  name: mock-operator
+  namespace: rbac-lab
+spec:
+  serviceAccountName: operator-sa
+  containers:
+  - name: operator
+    image: bitnami/kubectl:latest
+    command: ["/bin/sh", "-c"]
+    args:
+    - |
+      echo "Starting Operator Reconciliation Loop..."
+      while true; do
+        echo "Attempting to update AppConfig status to 'Ready'..."
+        kubectl patch appconfig my-app -n rbac-lab --type=merge --subresource=status -p '{"status": {"phase": "Ready"}}'
+        if [ $? -eq 0 ]; then
+          echo "Status successfully updated! Sleeping..."
+          sleep 3600
+        else
+          echo "Failed to update status. Retrying in 5s..."
+          sleep 5
+        fi
+      done
+
+Complete Solution
+-----------------------------------------------------------------------------------------
+Step 1: Deploy the CRD and Namespace
+
+Apply the CRD and wait a moment for it to register:
+
+kubectl apply -f crd.yaml
+sleep 3
+Step 2: Deploy the Flawed Workload
+
+Apply the workload and watch it fail with a 403 Forbidden error:
+
+kubectl apply -f workload.yaml
+kubectl logs -f mock-operator -n rbac-lab
+Step 3: The Rescue (Fixing the Role)
+Press Ctrl+C to exit the logs. Use your terminal to edit the live role:
+
+kubectl edit role operator-role -n rbac-lab
+Add the missing rule block so your rules section looks like this:
+
+rules:
+- apiGroups:
+  - ops.example.com
+  resources:
+  - appconfigs
+  verbs:
+  - get
+  - list
+  - watch
+  - update
+  - patch
+- apiGroups:
+  - ops.example.com
+  resources:
+  - appconfigs/status
+  verbs:
+  - get
+  - patch
+  - update
+Save and exit your editor.
+
+Step 4: Verify the Fix
+The mock operator pod will instantly pick up the new RBAC permissions on its next loop!
+
+# Check the logs again to see the success message
+kubectl logs mock-operator -n rbac-lab --tail=10
+
+# Check the Custom Resource to prove the status was actually written!
+kubectl get appconfig my-app -n rbac-lab -o jsonpath='{.status.phase}'
