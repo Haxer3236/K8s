@@ -1,0 +1,123 @@
+<!-- Description
+Scenario:
+
+Your company recently decided to deprecate a legacy third-party database Operator. An administrator uninstalled the Operator's Deployment, but forgot to delete the database instances (Custom Resources) first.
+
+Now, you have been tasked with cleaning up the remaining DummyDB Custom Resource. However, when you run kubectl delete, your terminal hangs forever. The resource is stuck in a permanent Terminating state.
+
+This happens because the dead Operator placed a finalizer on the resource. The API server is patiently waiting for the Operator to wake up, perform cleanup tasks (like deleting disks), and remove the finalizer flag. Since the Operator is dead, the API server will wait forever.
+
+Your Mission:
+
+You must deploy the "Broken State" baseline. Then, you will attempt to delete the stuck Custom Resource, break out of the hung terminal, and manually bypass the API server's lock by patching the finalizers array. Finally, because the Operator didn't run its cleanup routine, you must hunt down and manually delete the orphaned PersistentVolume it left behind to save cloud costs.
+
+Requirements:
+
+1. Deploy the Broken Baseline:
+
+You will apply two pre-written YAML manifests crd.yaml and broken-state.yaml present in /home/user. The first sets up the finalizer-lab Namespace and the DummyDB CRD.
+The second creates the test-db Custom Resource (pre-configured with a stubborn finalizer) and an orphaned PersistentVolume named orphaned-data-pv.
+2. Trigger the Trap:
+
+Attempt to delete the test-db resource in the finalizer-lab namespace. Watch your terminal hang indefinitely.
+3. The Finalizer Patch (The Rescue):
+
+Break out of the hung terminal (using Ctrl+C).
+You must use kubectl patch (or kubectl edit) to surgically remove the storage.example.com/cleanup string from the CR's metadata.finalizers array.
+Once the array is empty, the API server will instantly delete the resource.
+4. The Orphaned Volume Salvage:
+
+Now that the CR is gone, you must manually clean up the underlying infrastructure.
+Find and delete the cluster-scoped PersistentVolume named orphaned-data-pv.
+Outcome
+Mastered Resource Deletion Mechanics by understanding how the API server uses deletionTimestamp and finalizers to safely orchestrate asynchronous cleanup.
+Diagnosed and resolved the notorious Stuck in Terminating production pitfall using kubectl patch.
+Enforced cluster hygiene by manually reclaiming orphaned PersistentVolumes -->
+
+-----------------------------------------------------------------------------------------
+broken-state.yaml->
+
+apiVersion: storage.example.com/v1
+kind: DummyDB
+metadata:
+  name: test-db
+  namespace: finalizer-lab
+  finalizers:
+  - storage.example.com/cleanup
+spec:
+  size: "100Gi"
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: orphaned-data-pv
+spec:
+  capacity:
+    storage: 100Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: "/tmp/orphaned-data"
+
+crd.yaml---->
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: finalizer-lab
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: dummydbs.storage.example.com
+spec:
+  group: storage.example.com
+  names:
+    kind: DummyDB
+    plural: dummydbs
+    singular: dummydb
+  scope: Namespaced
+  versions:
+  - name: v1
+    served: true
+    storage: true
+    schema:
+      openAPIV3Schema:
+        type: object
+        properties:
+          spec:
+            type: object
+            properties:
+              size:
+                type: string
+Complete Solution
+Step 1: Deploy the CRD and Namespace
+
+Apply the CRD and wait a moment for it to register:
+
+kubectl apply -f crd.yaml
+sleep 3
+Step 2: Deploy the Broken State
+
+Apply the broken state:
+```bash
+kubectl apply -f broken-state.yaml
+Step 3: Trigger the Trap and Rescue the CR
+Attempt to delete the resource:
+
+kubectl delete dummydb test-db -n finalizer-lab
+Your terminal is now frozen. Press Ctrl+C to break out!
+
+Now, clear the finalizer to allow the API server to complete the deletion:
+
+kubectl patch dummydb test-db -n finalizer-lab -p '{"metadata":{"finalizers":[]}}' --type=merge
+
+# Verify it is completely gone
+kubectl get dummydb -n finalizer-lab
+Step 4: Salvage the Orphaned Infrastructure
+
+# Locate the orphaned volume
+kubectl get pv
+
+# Delete the orphaned volume to save cloud costs!
+kubectl delete pv orphaned-data-pv
