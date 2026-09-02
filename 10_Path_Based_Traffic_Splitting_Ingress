@@ -1,0 +1,163 @@
+# Description
+# Scenario: Your application has two modules: a Blue Module and a Green Module.
+
+# The Problem: You want to expose both modules on a single IP address without worrying about DNS or Hostnames yet.
+
+# The Solution: Configure an Ingress to route requests based only on the URL path. This is known as the "Fan-Out" pattern. Feel free to research around on how to achieve this.
+
+# Your Mission:
+
+# Deploy two services and configure one Ingress resource to satisfy these simple rules:
+
+# Any request to http://<IP>/blue --> Blue Service
+# Any request to http://<IP>/green --> Green Service
+# Requirements:
+
+# 1. Deploy Backends (Nginx):
+
+# Blue App: Nginx Deployment. Creates file /usr/share/nginx/html/blue/index.html with content "I am Blue". Service Port: 80.
+# Green App: Nginx Deployment. Creates file /usr/share/nginx/html/green/index.html with content "I am Green". Service Port: 80.
+# 2. Configure Ingress:
+
+# Create an Ingress named fanout-ingress.
+# Do not specify a host (this acts as a wildcard).
+# Path 1: /blue (Prefix) -> blue-service.
+# Path 2: /green (Prefix) -> green-service.
+# Environment:
+
+# Kubernetes Interface: kubectl is configured.
+# Target Namespace: default.
+# Tasks
+# Task 1: Deploy Blue & Green Backends
+
+# Deploy the applications. These self-configure their HTML paths to ensure 100% compatibility.
+# Task 2: Configure Ingress
+
+# Create fanout-ingress.yaml.
+# Hint: Remove the host field from the rules to apply this to any incoming request.
+# Task 3: Verify Routing
+
+# Use curl against the Node IP (or localhost).
+# curl -L http://<IP>/blue
+# curl -L http://<IP>/green
+# Outcome
+# Implemented Path-Based Routing (Fan-Out).
+# Mastered Ingress without DNS constraints.
+# Verified Layer 7 Traffic Splitting.
+
+
+cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: blue-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: blue
+  template:
+    metadata:
+      labels:
+        app: blue
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        command: ["/bin/sh", "-c"]
+        args:
+          - mkdir -p /usr/share/nginx/html/blue;
+            echo "<h1>I am Blue</h1>" > /usr/share/nginx/html/blue/index.html;
+            nginx -g 'daemon off;'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: blue-service
+spec:
+  selector:
+    app: blue
+  ports:
+  - port: 80
+    targetPort: 80
+EOF
+
+# 2. Deploy Green App (Path: /green)
+cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: green-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: green
+  template:
+    metadata:
+      labels:
+        app: green
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        command: ["/bin/sh", "-c"]
+        args:
+          - mkdir -p /usr/share/nginx/html/green;
+            echo "<h1>I am Green</h1>" > /usr/share/nginx/html/green/index.html;
+            nginx -g 'daemon off;'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: green-service
+spec:
+  selector:
+    app: green
+  ports:
+  - port: 80
+    targetPort: 80
+EOF
+
+Step 2: Create Ingress Resource
+
+cat <<EOF > fanout-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: fanout-ingress
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /blue
+        pathType: Prefix
+        backend:
+          service:
+            name: blue-service
+            port:
+              number: 80
+      - path: /green
+        pathType: Prefix
+        backend:
+          service:
+            name: green-service
+            port:
+              number: 80
+EOF
+kubectl apply -f fanout-ingress.yaml
+
+Step 3: Wait and Verify
+
+# 1. Wait for pods
+echo "Waiting for deployments..."
+kubectl wait --for=condition=Available deployment/blue-app deployment/green-app --timeout=60s
+sleep 5
+
+# 2. Detect IP (Localhost or Node IP)
+NODE_IP=$(kubectl get node -o jsonpath='{.items[0].status.addresses[0].address}')
+echo "Testing against Node IP: $NODE_IP"
+
+# 3. Test Paths (Using -L to follow redirects)
+curl -L -s http://$NODE_IP/blue
+curl -L -s http://$NODE_IP/green
