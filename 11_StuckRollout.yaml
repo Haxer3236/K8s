@@ -1,0 +1,98 @@
+# Scenario
+# You are deploying a resource-intensive AI processing service. To speed up deployments, you have configured an aggressive rolling update strategy.
+
+# However, your cluster has limited capacity. When you trigger an update, the new Pods request more memory than the nodes can immediately provide. Because your deployment strategy is configured to never make old Pods unavailable (maxUnavailable: 0), the old Pods refuse to terminate to make room, and the new Pods sit in Pending forever. You have created a deadlock.
+
+# Your task is to replicate this scenario and then "unstick" the deployment by modifying the strategy in-flight.
+
+# Important Note:
+
+# If you are unfamiliar with Kubernetes YAML structure and commands, refer to the official Kubernetes documentation.
+
+# Understanding YAML indentation and structure is critical. Even small formatting errors can cause resource creation to fail.
+
+# Task
+# Working directory: /home/user
+
+# 1. Create the Resource-Constrained Deployment
+
+# Create a manifest ai-deployment.yaml.
+
+# Name: ai-processor
+
+# Replicas: 3
+
+# Image: nginx:1.20
+
+# Resource Requests: memory: 100Mi, cpu: 100m.
+
+# Strategy: RollingUpdate
+
+# maxUnavailable: 0 (Constraint: Do not kill old pods until new ones are ready).
+
+# maxSurge: 2 (Aggressive: Try to create 2 new pods immediately).
+
+# 2. Trigger the Gridlock
+
+# Apply the manifest and wait for the 3 replicas to be Running.
+# Update: Update the image to nginx:1.21 using kubectl set image.
+# Observe: The rollout will stall (or proceed very slowly depending on node capacity). Even if it doesn't stall completely in this lab environment, you must demonstrate the Fix for production safety.
+# 3. Diagnose & Fix
+
+# Use kubectl describe to inspect the status.
+# The Fix: You need to change the strategy to allow Kubernetes to kill an old pod to make room for a new one.
+# 4. Verification
+
+# Verify that the deployment strategy has been updated.
+# Verify that all 3 pods are eventually running nginx:1.21.
+# Expected Outcome
+# Deployment ai-processor exists.
+# The Deployment strategy has maxUnavailable: 1.
+# All 3 replicas are running the nginx:1.21 image.
+
+
+# Complete Solution
+# **1. Create ai-deployment.yaml**
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-processor
+  namespace: default
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: ai-processor
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0  # The cause of the deadlock
+      maxSurge: 2
+  template:
+    metadata:
+      labels:
+        app: ai-processor
+    spec:
+      containers:
+      - name: api
+        image: nginx:1.20
+        resources:
+          requests:
+            memory: "100Mi"
+            cpu: "100m"
+
+2. Apply & Trigger Update
+
+kubectl apply -f ai-deployment.yaml
+# Wait for pods to be ready
+kubectl wait --for=condition=Available deployment/ai-processor
+
+# Trigger the update
+kubectl set image deployment/ai-processor api=nginx:1.21
+
+3. The Fix (Patch Strategy)
+
+# Update maxUnavailable to 1 to unblock the potential gridlock
+kubectl patch deployment ai-processor -p '{"spec":{"strategy":{"rollingUpdate":{"maxUnavailable":1}}}}'
+
