@@ -1,0 +1,20 @@
+kubectl get deployments.apps 
+kubectl get deployment api
+kubectl get pods
+kubectl scale deployment api --replicas=10
+kubectl get pods
+kubectl get deployment api
+
+kubectl get rs
+kubectl get deployments.apps 
+kubectl get deployments
+kubectl get pod
+kubectl delete rs resilient-app-6f6657bd6b
+
+
+
+ kubectl apply -f batch-job.yaml 
+    8  kubectl get pod
+    9  kubectl describe pod batch-job-1 
+
+    
