@@ -1,0 +1,58 @@
+
+# Description
+# This lab focuses on Kubernetes Deployments, which provide declarative updates for Pods and ReplicaSets. A Deployment ensures that the desired number of Pod replicas are running and can automatically replace Pods if they fail. You will create a Deployment that runs an Nginx-based web application, verify its Pods, and understand how Deployments simplify scaling and management of workloads compared to ReplicaSets and individual Pods.
+
+# Tasks
+# Task 1: Create a Namespace
+# Define and create a new Namespace named deployment-namespace.
+# Use the following command to do so: kubectl create namespace deployment-namespace
+# Verify that the Namespace has been created successfully.
+# Task 2: Create a Deployment
+# Write a YAML manifest named deployment.yaml.
+# Define a Deployment called web-app-deployment inside the deployment-namespace.
+# Configure the Deployment to manage Pods running the nginx image.
+# Set the Deployment to maintain 3 replicas.
+# Assign the label app: web-app to the Pods.
+# Apply the YAML file to create the Deployment.
+# Verify that both the Deployment and its Pods are successfully created.
+# Outcome
+# By completing this lab, you will:
+
+# Understand the purpose of Deployments in Kubernetes and how they build on top of ReplicaSets.
+# Learn how to declaratively define a Deployment using YAML manifests.
+# See how Deployments automatically manage the desired number of replicas.
+# Gain practical experience in creating, verifying, and managing Deployments using kubectl.
+# This lab provides foundational knowledge of Kubernetes Deployments, an essential workload controller for running reliable and scalable applications in clusters.
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: web-app-deployment
+  namespace: deployment-namespace
+  labels:
+     app: web-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: web-app
+  template:
+    metadata:
+      labels:
+        app: web-app
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+
+
+# Command used 
+
+#  kubectl create namespace deployment-namespace
+#     2  kubectl get ns
+#     3  vi deployment.yaml
+#     4  kubectl apply -f deployment.yaml 
+#     5  kubectl get pod
+#     6  kubectl get pod -n deployment-namespace 
+#     7  vi deployment.yaml 
+#     8  history 
