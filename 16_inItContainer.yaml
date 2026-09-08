@@ -1,0 +1,94 @@
+# Scenario
+# You are deploying a microservice architecture where your frontend web application relies on a backend database. A common race condition occurs during startup: if the web app starts before the database is ready, it crashes and enters a restart loop.
+
+# To prevent this, you will implement the "Init Container Pattern". You will configure the web application Pod to wait patiently until the database service is discoverable before it even attempts to start the main application container.
+
+# Knowledge Byte: What is a "Service"?
+# Since we haven't covered Services in depth yet, here is a quick primer: In Kubernetes, Pods come and go, getting new IP addresses each time. A Service provides a stable, permanent address (like a nickname) for a group of Pods.
+
+# Why do we need it here? Your Init Container needs to check if the Database is ready. It does this by looking for the Database's Service Name.
+# How to create one? You don't need to write a complex YAML for this yet. We will provide a simple one-line command (kubectl create service…) to create it instantly.
+# Task
+# Working directory: /home/user
+
+# 1. Define the Workload:
+
+# Create a Pod named gate-pod.
+# Main Container: Use the image nginx (representing the web app). Name it web-app. * Init Container: Add an init container named wait-for-db using the image busybox.
+# 2. Configure the Gate Logic:
+
+# The Init Container must prevent the main app from starting until a Service named db-service is resolved. * Command: Configure the Init Container to run a shell script that loops indefinitely until the DNS lookup for db-service.default.svc.cluster.local succeeds.
+
+# Note: You must use the Fully Qualified Domain Name (FQDN) (db-service.default.svc.cluster.local) to ensure the check works reliably in the lab environment.
+
+# 3. Deploy and Observe:
+
+# Apply the Pod manifest.
+# Verify that the Pod is stuck in the status Init:0/1 (because the service doesn't exist yet).
+# 4. Open the Gate:
+
+# Action: Run the following command to manually create the missing dependency:
+# kubectl create service clusterip db-service --tcp=80:80
+# Observation: Watch the Pod status. Once the command is run, the Init Container should succeed, and the Pod should transition to Running.
+# Expected Outcome
+# gate-pod is currently in the Running state.
+# A Service named db-service exists in the namespace.
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: gate-pod
+spec:
+  initContainers:
+  - name: wait-for-db
+    image: busybox
+    command:
+      - sh
+      - -c
+      - |
+        until nslookup db-service.default.svc.cluster.local; do
+          echo "waiting for db"
+          sleep 2
+        done
+  containers:
+  - name: web-app
+    image: nginx
+
+
+Command used to excute the file
+
+vi gate-pod.yaml
+    3  ls
+    4  kubectl apply -f gate-pod.yaml 
+    5  vi gate-pod.yaml
+    6  kubectl apply -f gate-pod.yaml 
+    7  kubectl get pod
+    8  kubectl create service clusterip db-service --tcp=80:80
+    9  kubectl get pod -w
+   10  vi gate-pod.yaml 
+   11  kubectl get pod -w
+   12  kubectl delete pod gate-pod  
+   13  kubectl get pod -w
+   14  kubectl get pod
+   15  kubectl apply -f gate-pod.yaml 
+   16  kubectl get pod -w
+   17  kubectl logs gete-pod -c wait-for-db
+   18  vi gate-pod.yaml 
+   19  kubectl delete pod gate-pod
+   20  kubectl apply -f gate-pod.yaml
+   21  kubectl get pod -w
+   22  vi gate-pod.yaml 
+   23  kubectl delete pod gate-pod
+   24  kubectl apply -f gate-pod.yaml
+   25  kubectl get pod -w
+   26  kubectl logs gate-pod -c wait-for-db
+   27  nslookup db-service.default.svc.cluster.local
+# to cheke the container in the pod 
+28  kubectl describe Pod gate-pod
+29  kubectl get pod gate-pod -o jsonpath='{.spec.containers[*].name}'
+ #To enter (execute a shell inside) a container running in a Pod, use:
+kubectl exec -it <pod-name> -- sh
+# If the Pod has multiple containers
+kubectl exec -it <pod-name> -c <container-name> -- sh
+  
