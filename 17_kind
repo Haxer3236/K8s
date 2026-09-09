@@ -1,0 +1,8 @@
+The Kind in the K8s define the object of the Kubernetes.
+Ex -
+apiVersion: v1
+kind: Pod
+metadata:
+  name: Pod
+
+Here in the above example kind define the Pod object. We can define the Object like Deployment, Replicaset,ConfigMap,Secret..etc 
