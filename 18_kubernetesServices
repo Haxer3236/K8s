@@ -1,0 +1,222 @@
+ <!-- Understanding Kubernetes Services
+Solved
+Guide for using Scaler IDE to solve DevOps problems.
+feature icon
+Using hints except Complete Solution is Penalty free now
+Use Hint
+Description:
+In this lab, you will explore how Kubernetes Services enable network communication between pods and abstract away the underlying pod IPs.
+
+You will create a simple nginx Deployment, scale it to multiple replicas, and expose it using a ClusterIP Service. By doing this, you’ll learn how Kubernetes automatically load-balances traffic across all the pods that match a Service’s selector.
+
+This lab demonstrates the basic working of Service discovery in Kubernetes — how Services find and route to Pods using labels and selectors, and how Endpoints maintain this mapping dynamically as pods are added or removed.
+
+Objective:
+Understand the role of Kubernetes Services in exposing applications.
+
+Learn how to link Deployments and Services using label selectors.
+
+Observe how Endpoints map to pods and verify Service-to-Pod communication.
+
+Tasks:
+Verify that the namespace svc-lab exists.
+
+Create a Deployment named web-deploy using the nginx image.
+
+Scale the Deployment to 3 replicas.
+
+Expose the Deployment as a Service named web-service on port 80 (ClusterIP).
+
+Verify that:
+
+The Service exists and has a valid ClusterIP.
+
+Endpoints show 3 pod IPs corresponding to the replicas.
+
+Check that the pod labels match the Service selector (so Endpoints populate correctly).
+
+Notes:
+ClusterIP is the default service type in Kubernetes and is used for internal communication within the cluster.
+
+Expected Outcome:
+A Deployment named web-deploy running 3 nginx pods.
+
+A Service named web-service exposing those pods internally on port 80.
+
+Service Endpoints showing 3 IPs, one for each pod, confirming correct routing setup. -->
+
+
+
+
+
+
+
+
+
+
+
+
+
+Check existing namespaces:
+kubectl get namespaces
+
+→ Confirms if svc-lab namespace exists.
+
+Create deployment in svc-lab namespace:
+kubectl -n svc-lab create deployment web-deploy --image=nginx
+
+→ Creates a Deployment named web-deploy running nginx containers.
+
+Scale deployment to 3 replicas:
+kubectl -n svc-lab scale deployment web-deploy --replicas=3
+
+→ Ensures three pods are running for load balancing.
+
+Expose deployment as a Service:
+kubectl -n svc-lab expose deployment web-deploy --port=80 --target-port=80 --name=web-service
+
+→ Creates a Service that forwards requests on port 80 to backend pods.
+
+Verify Service creation:
+kubectl -n svc-lab get svc web-service
+
+→ Checks Service type (ClusterIP) and assigned ClusterIP address.
+
+Check Endpoints mapping:
+kubectl -n svc-lab get endpoints web-service
+
+→ Ensures the Service is correctly routing to all pod IPs (3 in total).
+
+Verify pods and labels:
+kubectl -n svc-lab get pods -l app=web-deploy
+
+→ Confirms that the label selector matches Service configuration (important for endpoints).
+
+
+<------------------------------------------------------------------------------->
+<!-- 
+Exploring Kubernetes Service Types
+Solved
+Guide for using Scaler IDE to solve DevOps problems.
+feature icon
+Using hints except Complete Solution is Penalty free now
+Use Hint
+Description:
+In this lab, you will learn how Kubernetes Services expose your applications using different types.
+
+While ClusterIP provides internal-only access, NodePort exposes services externally on a port of every node, and LoadBalancer integrates with cloud providers to create an external load balancer.
+
+You will deploy a simple nginx application, scale it to 2 replicas, and expose it sequentially using ClusterIP, NodePort, and LoadBalancer Services.
+
+You will also verify that each Service correctly maps to the underlying pods via Endpoints.
+
+The lab helps you understand:
+
+How Services abstract pod IPs and provide stable network access.
+
+How different Service types affect accessibility within and outside the cluster.
+
+How Kubernetes automatically manages Endpoints when pods scale or change.
+
+Objective:
+Deploy a sample nginx application with 2 replicas.
+
+Expose the Deployment using ClusterIP, NodePort, and LoadBalancer Services.
+
+Observe the differences in accessibility and Endpoints for each Service type.
+
+Gain hands-on understanding of internal vs external exposure of Services in Kubernetes.
+
+Tasks:
+Verify the namespace svc-types-lab.
+
+Create Deployment nginx-deploy using the nginx image.
+
+Scale the deployment to 2 replicas.
+
+Expose the deployment as:
+
+ClusterIP (named nginx-clusterip)
+
+NodePort (named nginx-nodeport)
+
+LoadBalancer (named nginx-lb)
+
+Verify all Services exist.
+
+Check Endpoints for all Services to confirm connectivity to pods.
+
+Expected Outcome:
+2 nginx pods running in nginx-deploy.
+
+3 Services:
+
+nginx-clusterip → internal access
+
+nginx-nodeport → external access via NodeIP:NodePort
+
+nginx-lb → external load balancer (pending locally)
+
+All Services show correct Endpoints pointing to the pods. -->
+
+
+
+Check namespaces:
+kubectl get namespaces
+
+→ Confirms that svc-types-lab exists or needs to be created.
+
+Create Deployment in the namespace:
+kubectl -n svc-types-lab create deployment nginx-deploy --image=nginx
+
+→ Creates the nginx deployment.
+
+Scale Deployment to 2 replicas:
+kubectl -n svc-types-lab scale deployment nginx-deploy --replicas=2
+
+→ Ensures multiple pods for load balancing.
+
+Verify pods:
+kubectl -n svc-types-lab get pods
+
+→ Confirms that 2 pods are running.
+
+Expose ClusterIP Service:
+kubectl -n svc-types-lab expose deployment nginx-deploy --port=80 --target-port=80 --name=nginx-clusterip --type=ClusterIP
+
+→ Creates internal-only access.
+
+Verify ClusterIP Service:
+kubectl -n svc-types-lab get svc nginx-clusterip
+
+→ Confirms ClusterIP and port mapping.
+
+Expose NodePort Service (K8s auto-assigned port):
+kubectl -n svc-types-lab expose deployment nginx-deploy --port=80 --target-port=80 --name=nginx-nodeport --type=NodePort
+
+→ Allows external access to the service via NodeIP:NodePort.
+
+Verify NodePort Service:
+kubectl -n svc-types-lab get svc nginx-nodeport
+
+→ Confirms NodePort assigned and reachable externally.
+
+Expose LoadBalancer Service:
+kubectl -n svc-types-lab expose deployment nginx-deploy --port=80 --target-port=80 --name=nginx-lb --type=LoadBalancer
+
+→ Provisions external access; may stay pending in local clusters.
+
+Verify LoadBalancer Service:
+kubectl -n svc-types-lab get svc nginx-lb
+
+→ Checks external IP (pending locally) and port mapping.
+
+List all services:
+kubectl -n svc-types-lab get svc
+
+→ Compare ClusterIP, NodePort, LoadBalancer types and accessibility.
+
+Check endpoints for each service:
+
+kubectl -n svc-types-lab get endpoints
+→ Confirms each service points to the 2 nginx pods.
