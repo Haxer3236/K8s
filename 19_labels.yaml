@@ -1,0 +1,19 @@
+# 2: Create a Pod with a Label
+# Write a YAML manifest named labeled-pod.yaml.
+# Define a Pod called labeled-pod inside the replica-set-namespace.
+# The Pod should contain a single container running the nginx image.
+# Add the label app: my-app to the Pod.
+# Apply the YAML to create the Pod and verify that it is running with the correct label.
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: labeled-pod
+  namespace: replica-set-namespace
+  labels:
+     app: my-app
+spec:
+  containers:
+    - name: nginx
+      image: nginx
