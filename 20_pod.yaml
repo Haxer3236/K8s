@@ -1,0 +1,67 @@
+# Description
+# In this lab, you will explore how Kubernetes manages Pod scheduling and container resource usage using requests and limits.
+
+# Resource requests define the minimum CPU and memory that a container is guaranteed. Kubernetes uses these values during scheduling to ensure the Pod is placed on a node with sufficient resources.
+# Resource limits define the maximum CPU and memory a container can consume. If the container attempts to exceed these limits, Kubernetes either throttles CPU usage or terminates the container in case of memory violations.
+# This lab demonstrates how to configure and validate these settings for a Pod.
+
+# Important Note:
+
+# If you are unfamiliar with Kubernetes YAML structure, refer to the official Kubernetes documentation.
+
+# Understanding YAML indentation and structure is critical. Even small formatting errors can cause resource creation to fail.
+
+# Tasks
+# Verify namespace limits-lab exists and work inside the namespace.
+# Create a Pod with the following specifications:
+# Pod name: nginx-limits-pod
+# Container name: nginx
+# Image: nginx:1.21
+# Resource requests:
+# CPU: 100m
+# Memory: 128Mi
+# Resource limits:
+# CPU: 200m
+# Memory: 256Mi
+# Once created, confirm that the Pod reaches the Running state.
+# Verify the Pod specification using Kubernetes tools to ensure the resource requests and limits are correctly applied.
+# Important Notes
+# The Pod must be created in the limits-lab namespace.
+# Pod name, container name, image version, and resource values must match exactly as specified.
+# Both requests and limits are mandatory; omitting any will cause validation failures.
+# Outcome
+# By the end of this lab, you will be able to:
+
+# Configure CPU and memory requests and limits for Pods.
+# Understand how Kubernetes uses requests during scheduling.
+# Verify that limits control the maximum resource consumption for workloads.
+# Apply resource management best practices to ensure efficient and stable Kubernetes clusters.
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: nginx-limits-pod
+  namespace: limits-lab
+spec:
+  containers:
+    - name: nginx
+      image: nginx:1.21
+      resources:
+        requests:
+          cpu: 100m
+          memory: 128Mi
+        limits:
+          cpu: 200m
+          memory: 256Mi
+
+
+#command used :-
+
+kubectl get ns
+      vi nginx-limit-pod.yaml
+     kubectl apply -f nginx-limit-pod.yaml 
+      kubectl get pod -n limits-lab 
+      kubectl describe pod nginx-limits-pod
+      kubectl describe pod nginx-limits-pod -n limits-lab 
+      vi nginx-limit-pod.yaml
