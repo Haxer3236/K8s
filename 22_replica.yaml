@@ -1,0 +1,99 @@
+# Description
+# This lab introduces the concept of ReplicaSets in Kubernetes. ReplicaSets are used to ensure that a specified number of Pod replicas are running at all times.
+
+# You will start by creating a single Pod with a specific label, and then create a ReplicaSet that manages this Pod along with additional replicas.
+
+# This will help you understand how ReplicaSets can adopt Pods that were not initially created by them, as long as the labels match.
+
+# Tasks
+# Task 1: Create a Namespace
+# Define and create a new Namespace called replica-set-namespace.
+# Use the following command to do so: kubectl create namespace replica-set-namespace
+# Verify that the Namespace has been created successfully.
+# Task 2: Create a Pod with a Label
+# Write a YAML manifest named labeled-pod.yaml.
+# Define a Pod called labeled-pod inside the replica-set-namespace.
+# The Pod should contain a single container running the nginx image.
+# Add the label app: my-app to the Pod.
+# Apply the YAML to create the Pod and verify that it is running with the correct label.
+# Task 3: Create a Replica Set
+# Write a YAML manifest named replica-set.yaml.
+# Define a ReplicaSet called my-app-replicaset inside the replica-set-namespace.
+# Configure the ReplicaSet to look for Pods with the label app: my-app.
+# Set the ReplicaSet to maintain 3 replicas.
+# Use the same Pod template as the labeled-pod.
+# Apply the YAML to create the ReplicaSet.
+# Task 4: Verify Replica Set Management
+# Check that the ReplicaSet has adopted the initially created Pod.
+# Confirm that the ReplicaSet maintains 3 total Pods.
+# Inspect ReplicaSet details and verify that it controls all the Pods with the correct label.
+# Outcome
+# By completing this lab, you will:
+
+# Understand how ReplicaSets ensure availability and scalability in Kubernetes.
+# Learn how labels and selectors are used for ReplicaSet and Pod association.
+# See how a ReplicaSet can adopt existing Pods that match its selector.
+# Gain practical experience in writing YAML manifests for Pods and ReplicaSets.
+# Develop the ability to verify and troubleshoot ReplicaSet behavior using kubectl.
+# This lab gives you a clear understanding of how ReplicaSets provide reliability by maintaining a desired number of Pod replicas in Kubernetes clusters.
+
+
+apiVersion: apps/v1
+kind: ReplicaSet
+metadata:
+  name: my-app-replicaset
+  namespace: replica-set-namespace
+  labels:
+     app: my-app
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: my-app
+  template:
+    metadata:
+      labels:
+        app: my-app
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+#Command Used 
+
+# kubectl get ns
+#     2  kubectl create namespace replica-set-namespace
+#     3  kubectl get ns
+#     4  vi labeled-pod.yaml
+#     5  kubectl apply -f labeled-pod.yaml 
+#     6  kubectl get pod
+#     7  vi labeled-pod.yaml
+#     8  kubectl apply -f labeled-pod.yaml 
+#     9  vi labeled-pod.yaml
+#    10  kubectl apply -f labeled-pod.yaml 
+#    11  vi labeled-pod.yaml
+#    12  kubectl apply -f labeled-pod.yaml 
+#    13  vi labeled-pod.yaml
+#    14  kubectl apply -f labeled-pod.yaml 
+#    15  vi labeled-pod.yaml
+#    16  kubectl apply -f labeled-pod.yaml 
+#    17  vi labeled-pod.yaml
+#    18  vi replica-set.yaml
+#    19  kubectl get pod
+#    20  kubectl get pod -n replica-set-namespace 
+#    21  kubectl apply -f replica-set.yaml 
+#    22  vi replica-set.yaml
+#    23  kubectl apply -f replica-set.yaml 
+#    24  vi replica-set.yaml
+#    25  kubectl apply -f replica-set.yaml 
+#    26  vi replica-set.yaml
+#    27  kubectl apply -f replica-set.yaml 
+#    28  vi replica-set.yaml
+#    29  kubectl apply -f replica-set.yaml 
+#    30  vi replica-set.yaml
+#    31  kubectl apply -f replica-set.yaml 
+#    32  vi replica-set.yaml
+#    33  kubectl apply -f replica-set.yaml 
+#    34  kubectl get pod -n replica-set-namespace 
+#    35  vi replica-set.yaml
+
+
