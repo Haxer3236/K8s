@@ -1,0 +1,64 @@
+# Scenario
+# You are a DevOps Engineer designing a batch processing system. A debate has arisen in your team about which restartPolicy to use for short-lived jobs. One engineer argues that the default policy (Always) is fine for everything, while you believe it will cause completed jobs to restart endlessly, wasting resources.
+
+# To settle this, you will run an experiment by deploying two "One-Shot" Pods. Both will run a task that completes successfully (exit code 0) after 5 seconds. You must demonstrate that the default policy forces a restart loop, while the correct batch policy allows the Pod to stop gracefully.
+
+# Important Note:
+
+# If you are unfamiliar with Kubernetes YAML structure, refer to the official Kubernetes documentation.
+
+# Understanding YAML indentation and structure is critical. Even small formatting errors can cause resource creation to fail.
+
+# Task
+# Working directory: /home/user
+
+# 1. The "Always" Experiment:
+
+# Create a Pod named pod-always.
+# Use the image busybox.
+# Configure the container to run the command sleep 5.
+# Explicitly set the restartPolicy to Always.
+# 2. The "OnFailure" Experiment:
+
+# Create a Pod named pod-onfailure.
+# Use the image busybox.
+# Configure the container to run the command sleep 5.
+# Explicitly set the restartPolicy to OnFailure.
+# 3. The Verdict:
+
+# Wait approximately 15 seconds for the commands to finish.
+# Inspect the status of both Pods.
+# Confirm:
+# pod-always has entered a restart loop (Restarts 1).
+# pod-onfailure has stopped successfully with a status of Succeeded (Restarts = 0).
+# Expected Outcome
+# Two Pods exist in the default namespace.
+# pod-always shows a Restart Count of at least 1.
+# pod-onfailure shows a Status of Succeeded or Completed.
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-onfailure
+spec:
+  restartPolicy: OnFailure
+  containers:
+    - name: busybox2
+      image: busybox
+      command:
+        - sleep
+        - "5"
+*********************************************
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pod-always
+spec:
+  restartPolicy: Always
+  containers:
+    - name: busybox1
+      image: busybox
+      command:
+        - sleep
+        - "5"
