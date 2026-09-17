@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-api
+  namespace: default
+spec:
+  replicas: 10
+  selector:
+    matchLabels:
+      app: auth-api
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  minReadySeconds: 10
+  template:
+    metadata:
+      labels:
+        app: auth-api
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:1.20
+
+
+
+# command used ->>>>
+
+#  vi  progressive-deployment.yaml
+#     4  kubectl apply -f progressive-deployment.yaml 
+#     5  kubectl rollout status deployment/auth-api
+#     6  kubectl get pod
+#     9  kubectl get deployment
+#    10  kubectl set image deployment/auth-api nginx=nginx:1.21 && kubectl rollout pause deployment/auth-api
+#    11  kubectl get deployment
+#    12  kubectl get pod
+#    13  kubectl get deployment
+#    14  kubectl get pod
+#    15  ubectl get deploy auth-api
+#    16  kubectl get deploy auth-api
+
+
+  # kubectl set image deployment/auth-api nginx=nginx:1.21
+  #  19  kubectl get deploy auth-api
+  #  21  kubectl set image deployment/auth-api nginx=nginx:1.21 && kubectl rollout pause deployment/auth-api
+  #  23  kubectl set image deployment/auth-api nginx=nginx:1.21 && kubectl rollout resume deployment/auth-api
+  #  24  kubectl get pod auth-api-86766f458f-786ms -o=jsonpath='{.spec.containers[*].image}'
+  #  28  kubectl rollout status deployment/auth-api
+  #  31  kubectl rollout history deployment/auth-api
+  #  32  kubectl describe deployment auth-api
+  #  33  kubectl rollout undo deployment/auth-api
+  #  34  kubectl describe pod auth-api-86766f458f-gpfxh
+  #  44  kubectl describe pod auth-api-86766f458f-gpfxh | grep "Container"
+  
