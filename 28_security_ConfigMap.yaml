@@ -1,0 +1,108 @@
+# Description
+# Scenario:
+
+# Your company is undergoing a strict SOC2 security audit. The auditor is reviewing your Kubernetes cluster and asks: "How do you guarantee that sensitive database credentials are never written to the worker node's physical hard drives, where they could be extracted later?"
+
+# You explain that Kubernetes automatically mounts Secrets using tmpfs (a RAM-disk), meaning the data exists purely in the node's volatile memory. Furthermore, to prevent any accidental data leakage or malware persistence, your engineering team enforces a strict readOnlyRootFilesystem policy on all containers.
+
+# The auditor smiles and says, "Prove it."
+
+# Your Mission:
+
+# You must deploy a highly secure Pod that mounts a Secret. Once running, you will exec into the container, interrogate the Linux filesystem to mathematically prove the Secret is stored in RAM, and demonstrate that the container's root hard drive is entirely locked down.
+
+# Tasks
+# Task 1: Deploy the Audit Secret. Create a namespace named tmpfs-lab. Deploy an Opaque Secret named audit-secret containing api-key: c3VwZXJzZWNyZXQ=.
+
+# Task 2: Engineer the Secure Pod. Deploy a Pod named secure-app (using the busybox image). Mount the audit-secret to /etc/audit-secret.
+
+# Task 3: Enforce Immutability. Inside your Pod's container spec, you must add a securityContext block that explicitly sets readOnlyRootFilesystem: true.
+
+# Task 4: The Auditor's Test (Interrogate the OS). Once the pod is running, use kubectl exec to run df -T /etc/audit-secret. You must observe that the filesystem type is tmpfs. Finally, attempt to create a file at the root of the container (touch /hacked.txt) and watch the OS violently reject the command.
+
+# File-wise Requirements
+# 01-secure-architecture.yaml
+
+# Create the tmpfs-lab Namespace.
+# Create the audit-secret Secret (api-key: c3VwZXJzZWNyZXQ=).
+# Create the secure-app Pod.
+# Image: busybox, Command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+# Add a securityContext to the container spec with readOnlyRootFilesystem: true.
+# Mount the secret as a volume to mountPath: /etc/audit-secret and ensure the mount itself is marked readOnly: true.
+# Expected Outcome:
+
+# The Pod successfully starts and mounts the Secret.
+# Executing df -T or mount inside the container proves the secret volume is a tmpfs (RAM) filesystem.
+# Any attempt to write data to the container's standard filesystem (e.g., touch /test.txt) results in a Read-only file system error, satisfying the security audit.
+
+<--------------------------------------------------------------------------------------->
+
+Complete Solution
+Step 1: Deploy the Secure Architecture
+Create a file named 01-secure-architecture.yaml and paste the following:
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: tmpfs-lab
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: audit-secret
+  namespace: tmpfs-lab
+type: Opaque
+data:
+  api-key: c3VwZXJzZWNyZXQ= # "supersecret"
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: secure-app
+  namespace: tmpfs-lab
+spec:
+  containers:
+    - name: app
+      image: busybox
+      command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+      securityContext:
+        readOnlyRootFilesystem: true # THE LOCKDOWN
+      volumeMounts:
+        - name: secret-vol
+          mountPath: /etc/audit-secret
+          readOnly: true
+  volumes:
+    - name: secret-vol
+      secret:
+        secretName: audit-secret
+Apply the stack:
+
+kubectl apply -f 01-secure-architecture.yaml
+kubectl get pods -n tmpfs-lab -w
+Step 2: The Auditor’s Tests
+Once the pod is running, prove the architecture is secure.
+
+Proof 1: RAM-Disk Verification
+
+kubectl exec secure-app -n tmpfs-lab -- df -T /etc/audit-secret
+# Under 'Type', it will explicitly say 'tmpfs'
+Proof 2: Read-Only Immutability Verification
+
+kubectl exec secure-app -n tmpfs-lab -- touch /hacked.txt
+# The OS will block this: "touch: /hacked.txt: Read-only file system"
+Teaching Assistant (TA) - Help Request
+When can I access TA - Help Requests?
+Solve problems on your own first. This will deepen your understanding of the topics and increase your confidence. Use the free hints provided by your instructors if you get stuck. TAs are here to help, but you'll learn best by trying to solve problems on your own. Hence, TA Help Requests will be accessible to you only after you use all the 'free hints' available for the problem.
+Which type of Help Request should I make and how?
+Need help in understanding a topic?video call hr
+Do this when you need to understand Topics or Questions in detail
+Format: Video call on Scaler platform
+Video Call Help Request
+DevOps Lab
+Stop Lab
+Terminal 1close-btn
+Stops in:
+01:00:59
+
+Test Cases
+console-icon
