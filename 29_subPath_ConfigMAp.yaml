@@ -1,0 +1,147 @@
+# Description
+# Scenario:
+
+# Your development team wants to mount a configuration file (settings.txt) into a container's /etc/app/ directory. However, the application image already has other default files inside /etc/app/ that it needs to run.
+
+# If they mount a standard Kubernetes volume directly to /etc/app/, it will overwrite and hide all the existing default files in that directory, crashing the application. To cleverly bypass this, the developers used the subPath directive in their deployment YAML to mount only the specific settings.txt file.
+
+# The Incident: The application booted perfectly. However, the developers are now complaining that when they update the ConfigMap in the cluster, the running application never sees the changes.
+
+# You must explain The subPath Deadlock: When you use subPath, Kubernetes mounts the file using a static inode binding. It completely severs the file from the Kubelet's symlink-based synchronization loop. Live updates are mathematically impossible when using subPath.
+
+# Your Mission:
+
+# Deploy the developer's broken baseline. Update the ConfigMap and observe the deadlock. Then, refactor the deployment to mount the configuration to a dedicated, empty directory (/etc/app-config/) using a standard volume mount (without subPath) to restore the Kubelet's live synchronization.
+
+# SUDO Password (if needed): user@123!
+
+# Tasks
+# Task 1:
+
+# Deploy the Deadlocked Baseline. Create a namespace named subpath-lab.
+
+# Deploy a ConfigMap named app-settings with the value config.txt: "Version 1".
+
+# Deploy the demo-app Deployment, which uses subPath to mount the file.
+
+# Task 2:
+
+# Trigger the Deadlock. Update the ConfigMap to "Version 2".
+
+# Exec into the running pod and cat /etc/app/config.txt. Observe that it stubbornly remains "Version 1" forever.
+
+# Task 3: Refactor the Deployment. Create a refactored Deployment manifest. Remove the subPath directive. Change the mountPath to a new dedicated directory: /etc/app-config. Apply the new deployment.
+
+# Task 4: Prove Live Synchronization. Update the ConfigMap to "Version 3". Exec into the newly spawned pod and read /etc/app-config/config.txt. Wait up to 60 seconds and read it again. Observe the file magically update without restarting the pod!
+
+# File-wise Requirements
+# 01-baseline.yaml
+
+# Create the subpath-lab Namespace.
+
+# Create the app-settings ConfigMap (config.txt: "Version 1").
+
+# Create the demo-app Deployment with pod template label demo-app.
+
+# Image: busybox, Command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+
+# Volume Mount: name: config-vol, mountPath: /etc/app/config.txt, subPath: config.txt
+
+# 02-refactor.yaml
+
+# Update the demo-app Deployment.
+# Change the Volume Mount mountPath to /etc/app-config.
+# Delete the subPath line entirely.
+# Expected Outcome:
+
+# The initial deployment uses subPath, preventing live config updates.
+# The refactored deployment safely mounts the entire volume to a dedicated directory (/etc/app-config), restoring the Kubelet's ability to seamlessly sync ConfigMap updates.
+
+Complete Solution
+Step 1: Deploy the Deadlocked Architecture
+Create a file named 01-baseline.yaml and paste the following:
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: subpath-lab
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-settings
+  namespace: subpath-lab
+data:
+  config.txt: "Version 1"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  namespace: subpath-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      containers:
+        - name: app
+          image: busybox
+          command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+          volumeMounts:
+            - name: config-vol
+              mountPath: /etc/app/config.txt
+              subPath: config.txt # THE DEADLOCK!
+      volumes:
+        - name: config-vol
+          configMap:
+            name: app-settings
+Apply the baseline:
+
+kubectl apply -f 01-baseline.yaml
+Step 2: Refactor the Mounts
+Create a file named 02-refactor.yaml to fix the Deployment:
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-app
+  namespace: subpath-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: demo-app
+  template:
+    metadata:
+      labels:
+        app: demo-app
+    spec:
+      containers:
+        - name: app
+          image: busybox
+          command: ["/bin/sh", "-c", "while true; do sleep 3600; done"]
+          volumeMounts:
+            - name: config-vol
+              mountPath: /etc/app-config # Fixed! Standard directory mount
+      volumes:
+        - name: config-vol
+          configMap:
+            name: app-settings
+Apply the refactored deployment:
+
+kubectl apply -f 02-refactor.yaml
+kubectl get pods -n subpath-lab -w
+Step 3: Prove the Synchronization
+Update your ConfigMap directly from the terminal to “Version 3”:
+
+kubectl patch configmap app-settings -n subpath-lab -p '{"data":{"config.txt":"Version 3"}}'
+Now, read the file live. Run this command a few times over the next 60 seconds. You will see it update automatically!
+
+POD_NAME=$(kubectl get pods -n subpath-lab -l app=demo-app -o jsonpath='{.items[?(@.status.phase=="Running")].metadata.name}')
+kubectl exec $POD_NAME -n subpath-lab -- cat /etc/app-config/config.txt
