@@ -1,0 +1,59 @@
+kubectl exec -f adapter-pod.yaml 
+error: you must specify at least one command for the container
+
+
+apiVersion: v1
+kind: Pod
+metadata:
+  name: adapter-pod
+spec:
+  containers:
+    - name: legacy-app
+      image: busybox
+      command:
+        - sh
+        - -c
+        - |
+          while True; do
+            echo "[LEGACY] System OK $(date)" >> /var/log/legacy.log
+            sleep 5
+          done
+      volumeMounts:
+        - name: logs-vol
+          mountPath: /var/log
+    - name: adapter
+      image: busybox
+      command:
+        - sh
+        - -c
+        - |
+          tail -F /var/log/legacy.log | while read line; do
+            echo "{\"log\" : \"$line\"}" >> /var/log/json.log
+      volumeMounts:
+        - name: logs-vol
+          mountPath: /var/log
+  volumes:
+    - name: logs-vol
+      emptyDir: {}
+
+ 
+#Comman used
+ kubectl apply -f adapter-pod.yaml 
+    3  kubectl get pod
+    4  kubectl exec -it adapter-pod
+    5  kubectl exec -it adapter-pod sh
+    6  kubectl exec -it adapter-pod sh -c adapter
+    7  kubectl exec -it adapter-pod sh -c adapter sh
+    8  kubectl get pod
+    9  kubectl exec -it adapter-pod sh -c adapter sh
+   10  kubectl exec -it adapter-pod sh -c "adapter" sh
+   11  kubectl exec -it adapter-pod sh -c "adapter" -- sh
+   12  kubectl exec -it adapter-pod sh -c adapter -- sh
+   13  kubectl exec -it adapter-pod sh -c leagcy-app -- sh
+   14  kubectl exec -it adapter-pod -c leagcy-app -- sh
+   15  kubectl exec -it adapter-pod -c adapter -- sh
+   16  kubectl describe pod adapter-pod 
+   17  kubectl exec -it adapter-pod -c adapter -- sh
+   18  kubectl exec -it adapter-pod -c leagcy-app -- sh
+   19  kubectl exec -it adapter-pod -c legacy-app -- sh
+   20  history 
