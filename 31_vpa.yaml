@@ -1,0 +1,85 @@
+
+#  VPA: From Recommendation to Auto
+# Solved
+# Guide for using Scaler IDE to solve DevOps problems.
+# feature icon
+# Using hints except Complete Solution is Penalty free now
+# Use Hint
+# Scenario:
+
+# You have deployed a new application (api-service), but you are unsure of its actual resource usage. If you set requests too high, you waste money. If you set requests too low, the application throttles or crashes.
+
+# You want to use the Vertical Pod Autoscaler (VPA) to right-size these resources. Following best practices, your workflow will be:
+
+# Deploy the VPA in "Off" mode first to safely observe recommendations without disrupting traffic.
+# Once you are ready to apply the recommendations, switch the VPA to "Auto" mode to let it automatically resize the pods.
+# Objective:
+
+# Deploy the application, configure a VerticalPodAutoscaler in recommendation mode, and then update it to automate resource management.
+
+# Tasks:
+
+# 1. Deploy the Application:
+
+# Create a Deployment named api-service.
+# Image: nginx
+# Replicas: 1
+# Resources: Set the initial resource requests to 500 millicores of CPU and 1 GiB of memory. (simulating an oversized, unoptimized pod).
+# 2. Configure VPA (Observation Mode):
+
+# Create a VPA manifest named api-vpa.yaml.
+# Name: api-vpa
+# Target: Target the api-service deployment.
+# Update Policy: Configure the update mode to Off.
+# Apply this manifest.
+# 3. Switch to Automation:
+
+# Now, assume you have reviewed the data and want to enable automation.
+# Open your api-vpa.yaml file and change the updateMode to "Auto".
+# Re-apply the manifest to update the cluster configuration.
+# Expected Outcome:
+
+# A Deployment api-service exists with the initial oversized requests.
+# A VPA object api-vpa exists targeting the deployment.
+# The VPA's current active configuration shows updateMode: "Auto".
+
+#vpa.yaml
+apiVersion: autoscaling.k8s.io/v1
+kind: VerticalPodAutoscaler
+metadata:
+  name: api-vpa
+spec:
+  targetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: api-service
+  updatePolicy:
+    updateMode: "Auto"
+
+
+
+
+
+#vpa-deplyment~.yaml 
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-service
+  template:
+    metadata:
+      labels:
+        app: api-service
+    spec:
+      containers:
+        - name: nginx
+          image: nginx
+          resources:
+            requests:
+              cpu: 500m
+              memory: 1Gi
+
