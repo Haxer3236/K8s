@@ -1,0 +1,159 @@
+
+
+# Description
+# Scenario:
+
+# Your organization's security team has issued a mandate: The Billing Service handles sensitive financial data and must be accessible via HTTPS only.
+
+# The Problem: The legacy application container only speaks plain HTTP (Port 80) and cannot handle encryption natively.
+
+# The Solution: Implement TLS Termination (SSL Offloading) at the Ingress layer. The Ingress Controller will handle the encryption/decryption of traffic, allowing you to secure the connection without modifying the application code.
+
+# Your Mission:
+
+# Generate a self-signed SSL certificate for the domain billing.company.com.
+# Securely store this certificate in a Kubernetes Secret.
+# Configure an Ingress resource to serve traffic over HTTPS (Port 443) using this certificate, ensuring that the backend receives plain HTTP traffic.
+# Requirements:
+
+# 1. Deploy Backend:
+
+# Name: billing-app (Deployment).
+# Image: nginx:alpine.
+# Content: The app must serve an index.html containing "Secure Billing Portal".
+# Service: billing-service exposed on Port 80.
+# 2. Generate Certificates:
+
+# Use openssl to generate a key (tls.key) and a certificate (tls.crt). Feel free to research around on how to achieve this.
+# Crucial: The Certificate Common Name (CN) must be exactly billing.company.com.
+# 3. Create Secret:
+
+# Name: billing-tls-secret.
+# Type: kubernetes.io/tls.
+# 4. Configure Ingress:
+
+# Name: secure-ingress.
+# Host: billing.company.com.
+# TLS Configuration: You must configure the tls block to reference your secret for this host.
+# Environment:
+
+# Kubernetes Interface: kubectl is configured.
+# Tools: openssl and curl are installed.
+# Target Namespace: default.
+# Tasks
+# Task 1: Deploy Backend
+
+# Deploy the Nginx application and Service.
+# Note: Use the command line args to write the index.html file on startup.
+# Task 2: Generate Keys & Secret
+
+# Generate the self-signed certificate using openssl.
+# Create the Kubernetes TLS Secret from the generated files.
+# Task 3: Configure Secure Ingress
+
+# Create a manifest named secure-ingress.yaml.
+# Define the TLS section and the routing rules.
+# Task 4: Verify HTTPS
+
+# Use curl with the --resolve flag to force the connection to the Node IP while sending the correct SNI (Server Name Indication). Feel free to research around on how to achieve this.
+# Verify that the server returns the correct content and that the SSL certificate subject matches your custom CN.
+# Outcome
+# Mastered SSL/TLS Termination patterns in Kubernetes.
+# Learned to manage TLS Secrets and link them to Ingress resources.
+# Debugged SNI (Server Name Indication) issues using advanced curl techniques.
+
+Complete Solution (Run these commands)
+Step 1: Deploy Backend
+
+# Deploy Billing App (Creates index.html on startup)
+cat <<EOF | kubectl apply -f -
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: billing-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: billing
+  template:
+    metadata:
+      labels:
+        app: billing
+    spec:
+      containers:
+      - name: nginx
+        image: nginx:alpine
+        command: ["/bin/sh", "-c"]
+        args:
+          - echo "<h1>Secure Billing Portal</h1>" > /usr/share/nginx/html/index.html;
+            nginx -g 'daemon off;'
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: billing-service
+spec:
+  selector:
+    app: billing
+  ports:
+  - port: 80
+    targetPort: 80
+EOF
+
+Step 2: Generate Certificate & Secret
+
+# 1. Generate Self-Signed Cert (CN is critical)
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout tls.key -out tls.crt \
+  -subj "/CN=billing.company.com/O=BillingDept"
+
+# 2. Clean up old secret if it exists
+kubectl delete secret billing-tls-secret --ignore-not-found=true
+
+# 3. Create Kubernetes TLS Secret
+kubectl create secret tls billing-tls-secret \
+  --key tls.key \
+  --cert tls.crt
+
+Step 3: Create Secure Ingress
+
+cat <<EOF > secure-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: secure-ingress
+spec:
+  tls:
+  - hosts:
+    - billing.company.com
+    secretName: billing-tls-secret
+  rules:
+  - host: billing.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: billing-service
+            port:
+              number: 80
+EOF
+kubectl apply -f secure-ingress.yaml
+
+Step 4: Verify HTTPS
+
+# Wait for resources
+echo "Waiting for pods..."
+kubectl wait --for=condition=Available deployment/billing-app --timeout=60s
+sleep 5
+
+# Detect Node IP
+NODE_IP=$(kubectl get node -o jsonpath='{.items[0].status.addresses[0].address}')
+
+# Verify Content and Cert Subject
+# We use --resolve to ensure the SNI (Server Name) is sent correctly
+echo "Testing HTTPS connection to $NODE_IP..."
+curl -k -v --resolve billing.company.com:443:$NODE_IP https://billing.company.com 2>&1 | grep -E "Secure Billing Portal|subject"
+

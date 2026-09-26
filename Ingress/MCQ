@@ -1,0 +1,63 @@
+Q7. Troubleshooting Pending PVCs
+Solved
+You create a PVC, but it stays in the Pending state indefinitely. You run kubectl describe pvc my-pvc and see the event waiting for a volume to be created, either by external provisioner "xyz" or manually created by system administrator. Which of the following is NOT a possible cause?
+Ans. The Pod trying to use the volume has failed to schedule due to CPU resource limits.
+
+Q8. Expanding Storage
+Attempted
+A database running in your cluster is running out of disk space. You edit the PVC to increase storage: 10Gi to 20Gi. The PVC status updates to FileSystemResizePending, but the extra space is not yet visible inside the Pod. What creates the final trigger to resize the filesystem?
+Ans. Delete and recreate the Pod to trigger filesystem resizing.
+
+Q9. Debugging Mount Failures
+Solved
+A Pod is stuck in ContainerCreating.
+kubectl describe pod shows the error:
+MountVolume.SetUp failed for volume "pvc-123": mount failed: exit status 32 … broken pipe.
+What is the most likely root cause?
+Ans. The Node cannot reach the storage backend.
+
+Q. Why is an Ingress Controller classified as a "Layer 7" Load Balancer, whereas a standard Kubernetes Service (LoadBalancer type) is "Layer 4"?
+Ans. Ingress routes traffic based on HTTP Headers (Host) and URL Paths, while Services route based only on IP and Port.
+
+Q11. Host-Based Routing Logic
+Solved
+In a scenario where multiple domains (e.g., api.company.com and admin.company.com) resolve to the same Ingress IP address, how does the Ingress Controller determine which Service to send the traffic to?
+Ans. It inspects the Host HTTP header in the incoming request.
+
+Q2. Path Matching Mechanics
+Solved
+You have configured an Ingress with paths /blue and /green. If you set pathType: Prefix for the /blue path, which of the following requests would match that rule?
+Ans. /blue and /blue/whales.
+Prefix means the request path must start with /blue as a complete path element. It matches /blue and any subpaths under it.
+✅ Matches:
+/blue
+/blue/
+/blue/app
+/blue/v1/test
+❌ Does NOT match:
+/blu
+/bluegreen
+/green
+
+Q3. TLS Secret Configuration
+Solved
+When creating a Kubernetes Secret of type kubernetes.io/tls to secure an Ingress, which two specific data keys MUST the secret contain for the Controller to use it successfully?
+Ans. tls.crt and tls.key
+
+Q4. Certificate Selection
+Attempted
+When verifying an HTTPS Ingress with a self-signed certificate, curl -k https://<IP> often returns a default "Fake" certificate, whereas curl -k --resolve … returns the correct custom certificate. What is the technical reason for this?
+Ans.TLS certificate selection in an Ingress is based on the hostname sent via SNI (Server Name Indication).
+
+Q5. Service Discovery Troubleshooting
+Solved
+A Service is configured with the selector app: payment-v2, but the backend Pods are labeled app: payment. What is the immediate result of this configuration mismatch?
+Ans. The Service is created, but kubectl get endpoints shows <none> (empty).
+
+Q6. Backend Connectivity Errors
+Solved
+If an Ingress Controller receives a valid request for a domain, but the backend Service has no active Endpoints (0/0 pods), what HTTP error code does the client typically receive?
+Ans. 503 Service Unavailable (The backend is unavailable).
+
+
+

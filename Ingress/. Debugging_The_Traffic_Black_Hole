@@ -1,0 +1,99 @@
+<!-- Description
+Scenario: A junior developer has just deployed the critical Payment Service.
+
+Status: The Pods are Running. The Ingress is active.
+The Incident: Customers are reporting 502 Bad Gateway or 503 Service Unavailable errors when trying to access payment.company.com.
+The Diagnosis: The Ingress Controller cannot find any healthy backend endpoints to forward traffic to.
+Your Mission:
+
+Analyze the broken resources (Deployment and Service).
+Identify the Two Fatal Configuration Errors causing the black hole.
+Fix the Service configuration to restore connectivity.
+Requirements:
+
+1. Analyze:
+
+Check the payment-app Deployment labels.
+Check the payment-service Selector and Ports.
+Check kubectl get endpoints payment-service (It must show an IP, currently it shows <none>).
+2. Fix the Service:
+
+Update the Service's Selector to match the Pod's labels.
+Update the Service's TargetPort to match the Container's listening port.
+3. Verify:
+
+Ensure kubectl get endpoints payment-service shows an IP address.
+Verify curl to payment.company.com returns "Payment Processed".
+Environment:
+
+Kubernetes Interface: kubectl is configured.
+Target Namespace: default.
+Tasks
+Task 1: Diagnosis
+
+Run relevant kubectl commands to understand the exact issues.
+Task 2: Apply the Fix
+
+Create a file with the corrected configuration.
+Apply it to overwrite the broken service.
+Task 3: Verify Connectivity
+
+Use curl with the Host header to confirm traffic is flowing. (Replace $NODE_IP with the actual NodeIP)
+
+curl -s -H "Host: payment.company.com" http://$NODE_IP 
+Outcome
+Mastered Service Discovery Debugging.
+Understood the relationship between Selectors, Labels, and Endpoints.
+Fixed a real-world "Traffic Black Hole". -->
+
+# Create the corrected Service manifest
+cat <<EOF > fixed-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: payment-service
+spec:
+  selector:
+    app: payment     # FIXED: Matches Pod Label
+  ports:
+  - port: 80
+    targetPort: 80   # FIXED: Matches Container Port
+EOF
+
+# Apply the fix
+kubectl apply -f fixed-service.yaml
+
+Step 2: Verify
+
+# 1. Check Endpoints (Should now show an IP)
+kubectl get endpoints payment-service
+
+# 2. Verify Connectivity
+NODE_IP=$(kubectl get node -o jsonpath='{.items[0].status.addresses[0].address}')
+curl -s -H "Host: payment.company.com" http://$NODE_IP | grep "Payment Processed"
+
+
+<-------------------------------Hitory-------------------------------->
+
+1  kubectl get endpoints
+    2  curl paymemt.company.com
+    3  curl payment.company.com
+    4  ls
+    5  kubectl get deployments.apps 
+    6  kubectl get ingress
+    7  kubectl get service
+    8  kubectl describe deployments.apps payment-app 
+    9  kubectl describe service payment-service 
+   10  kubectl describe ingress payment-ingress 
+   11  kubectl edit service payment-service 
+   12  kubectl get endpoints
+   13  kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}'
+   14  kubectl geNODE_IP=$(nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}')
+   15  NODE_IP=$(kubectl get nodes -o jsonpath='{.items[*].status.addresses[?(@.type=="InternalIP")].address}')
+   16  echo "NODE_IP"
+   17  echo "$NODE_IP"
+   18  curl -s -H "Host: payment.company.com" http://$NODE_IP 
+   19  kubectl edit service payment-service 
+   20  kubectl get endpoints
+   21  curl -s -H "Host: payment.company.com" http://$NODE_IP 
+   22  history

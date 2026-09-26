@@ -1,0 +1,193 @@
+
+
+# Description
+# Scenario:
+
+# Your company has two distinct services: a public-facing API and an internal Admin Dashboard.
+
+# The Problem: You want to host both services on the same cluster and expose them via a single external IP address to save costs, but they must be accessed via different domain names.
+
+# The Solution: Configure an Ingress Resource with Host-Based Routing. This acts as a Layer 7 virtual host, routing traffic based on the Host header in the HTTP request.
+
+# Your Mission:
+
+# Deploy two applications and configure a single Ingress to route traffic as follows:
+
+# http://api.company.com --> Routes to api-service (Nginx - Returns "Welcome to nginx")
+# http://admin.company.com --> Routes to admin-service (Apache - Returns "It works!")
+# Requirements:
+
+# 1. Deploy Applications:
+
+# API App: Create a Deployment named api-app using the image nginx:alpine. Expose it as a Service named api-service on Port 80.
+# Admin App: Create a Deployment named admin-app using the image httpd:alpine. Expose it as a Service named admin-service on Port 80.
+# 2. Configure Ingress:
+
+# Create an Ingress resource named host-ingress.
+# Rule 1: Traffic for host api.company.com must go to api-service on Port 80.
+# Rule 2: Traffic for host admin.company.com must go to admin-service on Port 80.
+# Environment:
+
+# Kubernetes Interface: kubectl is configured.
+# Target Namespace: default.
+# Ingress Controller: Pre-installed (Traefik/Nginx).
+# Tasks
+# Task 1: Deploy Backends
+
+# Deploy the api (Nginx) and admin (Apache) workloads and their corresponding Services.
+# Task 2: Create Ingress Resource
+
+# Create a file named host-ingress.yaml.
+# Define the spec.rules section to map the two domains to their respective backend services.
+# Apply the manifest.
+# Task 3: Verify Routing
+
+# Use curl with the Host Header to simulate DNS resolution (since we don't have real DNS records):
+# curl -H "Host: api.company.com" http://localhost
+# curl -H "Host: admin.company.com" http://localhost
+# Outcome
+# Implemented Virtual Hosting in Kubernetes.
+# Consolidated multiple domains behind a Single LoadBalancer.
+# Mastered Host Header Manipulation for testing and debugging.
+
+<-------------------------------------------------------->
+
+
+Complete Solution (Run these commands)
+Step 1: Deploy Backend Services
+
+# Deploy API (Nginx)
+kubectl create deployment api-app --image=nginx:alpine
+api-app.yal
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api-app
+  template:
+    metadata:
+      labels:
+        app: api-app
+    spec:
+      containers:
+        - name: nginx
+          image: nginx:alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+
+
+kubectl expose deployment api-app --name=api-service --port=80
+api-Service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: api-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: api-app
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+
+# Deploy Admin (Apache - returns "It works!")
+kubectl create deployment admin-app --image=httpd:alpine
+admin-app.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: admin-app
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: admin-app
+  template:
+    metadata:
+      labels:
+        app: admin-app
+    spec:
+      containers:
+        - name: apache
+          image: httpd:alpine
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+
+kubectl expose deployment admin-app --name=admin-service --port=80
+admin-service.yaml
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: admin-service
+  namespace: default
+spec:
+  type: ClusterIP
+  selector:
+    app: admin-app
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80
+      targetPort: 80
+
+Step 2: Create Ingress Resource
+
+cat <<EOF > host-ingress.yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: host-ingress
+spec:
+  rules:
+  - host: api.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: api-service
+            port:
+              number: 80
+  - host: admin.company.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: admin-service
+            port:
+              number: 80
+EOF
+kubectl apply -f host-ingress.yaml
+
+Step 3: Wait and Verify
+
+# Wait for pods to be ready
+echo "Waiting for pods..."
+kubectl wait --for=condition=Available deployment/api-app deployment/admin-app --timeout=60s
+
+# Wait for Ingress Controller to pick up config
+sleep 5
+
+# Test API (Expect Nginx welcome page)
+curl -s -H "Host: api.company.com" http://localhost | grep "Welcome to nginx"
+
+# Test Admin (Expect "It works!" from Apache)
+curl -s -H "Host: admin.company.com" http://localhost | grep "It works!"
