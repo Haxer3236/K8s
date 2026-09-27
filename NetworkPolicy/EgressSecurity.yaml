@@ -1,0 +1,90 @@
+# Scenario:
+
+# You are the Cloud Architect for the secure-dns project. You are deploying an API service that must communicate with a backend Database.
+
+# To strictly adhere to the "Principle of Least Privilege," you must restrict the API's outgoing (Egress) traffic. The API should only be allowed to talk to the Database.
+
+# The Challenge:
+
+# If you simply create a policy that says "Allow Egress to Database," you implicitly deny all other traffic—including DNS lookups. Without access to the cluster's DNS server (CoreDNS), your API pod will crash because it cannot resolve the hostname database to an IP address.
+
+# Objective:
+
+# Your task is to prepare the environment and implement a robust Egress Network Policy that permits strictly two paths:
+
+# Application Traffic: TCP connection to the Database.
+# Infrastructure Traffic: UDP connection to the Cluster DNS system.
+# Tasks:
+
+# 1. Prepare the Infrastructure:
+
+# Create a namespace named secure-dns.
+# Critical Prerequisite: The Kubernetes DNS service resides in the kube-system namespace. To allow your policy to select it, you must apply the label name=kube-system to the kube-system namespace.
+# 2. Implement the Policy:
+
+# Create a manifest named api-egress.yaml.
+# Name the policy allow-db-and-dns.
+# Deploy it in the secure-dns namespace.
+# Target: Apply the policy to the API pod (Label: app: api).
+# PolicyType: Egress.
+# 3. Define Rules:
+
+# Rule 1 (Database): Allow Egress to the pod with label app: db on TCP port 5432.
+# Rule 2 (DNS): Allow Egress to the namespace with label name: kube-system on UDP port 53.
+# Expected Outcome:
+
+# Namespace secure-dns is created.
+# Namespace kube-system has the label name=kube-system.
+# Policy allow-db-and-dns exists and contains exactly two Egress rules (one for DB, one for DNS).
+
+
+
+
+Complete Solution
+<-------------------------------------------------------->
+
+1. Prepare Infra:
+
+kubectl create ns secure-dns
+kubectl label ns kube-system name=kube-system
+
+Verify the ns labels
+kubectl get namespace kube-system --show-labels
+
+2. Create the Manifest:
+vi api-egress.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-db-and-dns
+  namespace: secure-dns
+spec:
+  # 1. Apply to the API Pod (The Source)
+  podSelector:
+    matchLabels:
+      app: api
+  # 2. Control Outgoing Traffic
+  policyTypes:
+  - Egress
+  egress:
+  # Rule 1: Allow Database Access (TCP 5432)
+  - to:
+    - podSelector:
+        matchLabels:
+          app: db
+    ports:
+    - protocol: TCP
+      port: 5432
+  # Rule 2: Allow DNS Access (UDP 53 to kube-system)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+
+3. Apply the Policy:
+
+kubectl apply -f api-egress.yaml

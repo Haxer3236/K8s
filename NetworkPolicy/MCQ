@@ -1,0 +1,49 @@
+Q6. Lateral Movement Risk
+Solved
+In a default Kubernetes cluster, a hacker compromises your "Frontend" pod via an SQL injection. They immediately try to connect to your "Database" pod on port 5432. What stops them?
+Ans. Nothing; by default, all pods can communicate with all other pods.
+
+Q. Q7. Zero Trust Implementation
+Solved
+You want to apply a "Default Deny" policy to a namespace, ensuring no traffic enters any pod unless explicitly allowed. Which podSelector syntax selects every pod in the namespace?
+Ans. podSelector: {}
+
+Q8. The "Silent" Drop
+Solved
+You have a Web pod that currently accepts traffic from anywhere. You apply a NetworkPolicy to it that only allows traffic from the LoadBalancer. What happens to traffic coming from the Monitoring pod?
+Ans. It is implicitly blocked (dropped)
+
+Q9. The DNS Problem
+Solved
+You created an Egress policy for your API pod to allow it to connect only to the Database. Suddenly, the API crashes with "Host Not Found" errors. What did you forget?
+Ans. To allow Egress DNS traffic to kube-system on UDP 53.
+
+Q10. Architecture Security
+Solved
+In a secure 3-Tier application (Frontend → API → Database), which connection path should be explicitly prevented by your policies?
+Ans. Frontend → Database
+
+Q2. Selectors: Namespace vs Pod
+Solved
+You want to allow traffic from any pod belonging to "Team A". Which selector matches the entire namespace of Team A?
+Ans. namespaceSelector: { matchLabels: { name: team-a } }
+
+Q3. External Access
+Solved
+Your pod needs to download a file from the public internet (e.g., S3 or GitHub) but must be blocked from accessing internal private IPs (10.0.0.0/8). Which policy feature handles this?
+Ans. ipBlock with an except field.
+
+Q4. Policy Direction
+Solved
+You are writing a policy for the Database pod. You want to define who is allowed to connect TO it. Which policyType do you use?
+Ans. Ingress
+
+Q5. Debugging Labels
+Solved
+The script emphasizes that policies rely entirely on labels. Which command allows you to verify the labels on your pods?
+Ans. kubectl get pods --show-labels
+
+Q6. Infrastructure Prerequisite
+Solved
+You applied a perfect NetworkPolicy YAML, but traffic is not being blocked. What is the most likely infrastructure cause mentioned in the script?
+Ans. Your cluster is using a CNI (like standard Flannel) that does not support Network Policies.

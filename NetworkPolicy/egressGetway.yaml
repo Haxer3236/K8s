@@ -1,0 +1,90 @@
+# Q1. Secure External Access (The Egress Gateway)
+# Solved
+# Guide for using Scaler IDE to solve DevOps problems.
+# feature icon
+# Using hints except Complete Solution is Penalty free now
+# Use Hint
+# Scenario:
+
+# You are deploying a Payment Processing microservice. This service needs to connect to an external 3rd-party API (like Stripe or PayPal) over the public internet (HTTPS) to process credit cards.
+
+# The Security Risk:
+
+# If you allow unrestricted Egress traffic to 0.0.0.0/0 (The Internet), a compromised pod could also scan your internal private networks (e.g., your company's VPN or other VPC subnets) or exfiltrate data to a hacker's server.
+
+# Objective:
+
+# Your task is to create a "Smart Egress" policy. You must allow the pod to reach the Public Internet BUT explicitly block it from accessing your internal private network range (10.0.0.0/8).
+
+# Tasks:
+
+# 1. Infrastructure Setup:
+
+# Create a namespace named payment-gateway.
+# Ensure the kube-system namespace is labeled with name=kube-system (required for DNS resolution).
+# 2. Implement the Policy:
+
+# Create a manifest named external-access.yaml.
+# Name the policy secure-internet-egress.
+# Deploy it in the payment-gateway namespace.
+# Target: Apply to the pod with label app: payment.
+# PolicyType: Egress.
+# 3. Define Rules:
+
+# Rule 1 (DNS): Allow UDP port 53 to the namespace name: kube-system (Standard DNS rule).
+# Rule 2 (Internet): Allow TCP port 443 (HTTPS) to the CIDR 0.0.0.0/0.
+# Exception: Inside the Internet rule, add an except clause to block the internal range 10.0.0.0/8.
+# Expected Outcome:
+
+# Namespace payment-gateway exists.
+# Policy secure-internet-egress exists.
+# The policy allows DNS.
+# The policy uses ipBlock to allow the internet while excluding the 10.x.x.x private range.
+
+Complete Solution
+
+<-------------------------------------------------------------------->
+
+1. Infrastructure Setup:
+
+kubectl create ns payment-gateway
+kubectl label ns kube-system name=kube-system --overwrite
+
+2. Create the Manifest:
+vi external-access.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: secure-internet-egress
+  namespace: payment-gateway
+spec:
+  # 1. Target the Payment Pod
+  podSelector:
+    matchLabels:
+      app: payment
+  policyTypes:
+  - Egress
+  egress:
+  # Rule 1: Allow DNS (Essential for external calls)
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+
+  # Rule 2: Allow Internet (HTTPS) BUT block Internal Network
+  - to:
+    - ipBlock:
+        cidr: 0.0.0.0/0
+        except:
+        - 10.0.0.0/8
+    ports:
+    - protocol: TCP
+      port: 443
+
+3. Apply the Policy:
+
+kubectl apply -f external-access.yaml

@@ -1,0 +1,67 @@
+# Q3. Database Fortress (Ingress Whitelisting)
+# Solved
+# Guide for using Scaler IDE to solve DevOps problems.
+# feature icon
+# Using hints except Complete Solution is Penalty free now
+# Use Hint
+# Scenario:
+
+# You are the Lead Security Engineer for a fintech startup. Your application stack consists of an API service that processes transactions and a Database that stores sensitive customer financial records.
+
+# During a recent security audit, it was discovered that the cluster is operating in a "Default Allow" mode—meaning any pod in the namespace (including potential rogue pods) can connect to the database. This is a critical vulnerability.
+
+# Objective:
+
+# Your task is to implement a Zero Trust architecture for the database. You must create a Network Policy that acts as a strict firewall, ensuring that only the authorized API pod can communicate with the Database.
+
+# Tasks:
+
+# 1. Implement the Firewall:
+
+# Create a Network Policy manifest named db-allow.yaml.
+# The policy must be named db-guard.
+# It must be created in the secure-db namespace.
+# Target: Apply this policy to the Database pod (Label: app: db).
+# Rule: Allow Ingress (incoming) traffic only from the API pod (Label: app: api).
+# Port: Restrict the traffic to TCP port 5432.
+# Expected Outcome:
+
+# A NetworkPolicy named db-guard exists in the secure-db namespace.
+# The policy selects the db pod.
+# The policy contains a single Ingress rule allowing the api pod on port 5432.
+
+
+<----------------------------------------------------------------------------------->
+Complete Solution
+Make sure that secure-db nam created. if not create first namespace
+kubectl create ns secure-db
+
+1. Create the Manifest:
+vi db-allow.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-guard
+  namespace: secure-db
+spec:
+  # 1. Target the Database (The destination)
+  podSelector:
+    matchLabels:
+      app: db
+  # 2. Define the Policy Type
+  policyTypes:
+  - Ingress
+  # 3. Define the Allow Rule
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: api
+    ports:
+    - protocol: TCP
+      port: 5432
+
+2. Apply the Policy:
+
+kubectl apply -f db-allow.yaml

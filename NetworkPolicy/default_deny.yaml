@@ -1,0 +1,59 @@
+# Problem Description
+# Scenario:
+
+# You are the Security Lead for a new confidential initiative. Your team requires a dedicated workspace (Namespace) named secure-project to host sensitive workloads.
+
+# To comply with the company's "Zero Trust" security standards, this environment must not allow any traffic by default. Every pod deployed here must be isolated immediately upon creation, preventing accidental exposure or lateral movement attacks.
+
+# Objective:
+
+# Your task is to provision the secure environment and enforce a "Blanket" Network Policy that selects every pod in the namespace and blocks all incoming (Ingress) traffic. This ensures that no traffic is allowed unless explicitly whitelisted by a future policy.
+
+# Tasks:
+
+# 1. Create the Environment:
+
+# Create a new Kubernetes Namespace named secure-project.
+# 2. Implement the Lockdown:
+
+# Create a Network Policy manifest named lockdown.yaml.
+# The policy must be named default-deny.
+# It must be deployed inside the secure-project namespace.
+# Target: It must select ALL pods in the namespace.
+# Rule: It must control Ingress traffic but allow nothing (empty allow list).
+# Expected Outcome:
+
+# Namespace secure-project exists.
+# NetworkPolicy default-deny exists inside the secure-project namespace.
+# The policy's podSelector matches all pods.
+# The policy implicitly denies all ingress traffic (no allowed sources listed).
+
+
+
+Complete Solution
+
+<--------------------------------------------------------------------->
+
+1. Create the Namespace:
+
+kubectl create ns secure-project
+
+2. Create the Policy Manifest:
+vi lockdown.yaml
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: secure-project
+spec:
+  # 1. Select ALL pods in this namespace
+  podSelector: {}
+  # 2. Control Ingress (Incoming) traffic
+  policyTypes:
+  - Ingress
+  # 3. No 'ingress' section = Allow Nothing
+
+3. Apply the Policy:
+
+  kubectl apply -f lockdown.yaml

@@ -1,0 +1,64 @@
+
+# Q8. Namespace Isolation (The Walled Garden)
+# Solved
+# Guide for using Scaler IDE to solve DevOps problems.
+# feature icon
+# Using hints except Complete Solution is Penalty free now
+# Use Hint
+# Scenario:
+
+# You are managing a multi-tenant Kubernetes cluster shared by two teams: Development and Finance.
+
+# Development: Contains experimental, potentially unstable code.
+
+# Finance: Contains sensitive payroll data.
+
+# Currently, the cluster is a "flat network." A developer running a test script in the development namespace can accidentally (or maliciously) connect to the database in the finance namespace. This is a compliance violation.
+
+# Objective:
+
+# Your task is to implement Namespace Isolation for the finance namespace. You must create a Network Policy that allows pods in finance to talk to each other (e.g., Finance Web talking to Finance DB) but blocks all traffic coming from outside the namespace (like development).
+
+# Tasks:
+
+# 1. Prepare the Infra:
+
+# Create two namespaces: development and finance.
+# 2. Implement the Wall:
+
+# Create a manifest.
+# Name the policy allow-same-namespace.
+# Deploy it in the finance namespace.
+# Target: The policy should apply to ALL pods in the finance namespace.
+# 3. Define Rules:
+
+# Allow Internal Traffic: Allow Ingress traffic only from pods located within the same namespace (finance).
+
+# Note: Do not list specific labels. Allow "Any pod in this namespace".
+
+# Expected Outcome:
+
+# Namespaces development and finance exist.
+# Policy allow-same-namespace exists in finance.
+# Pods inside finance can communicate with each other, while all external namespace traffic is denied.
+
+<------------------------------------------------------------------------->
+
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-same-namespace
+  namespace: finance
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+  ingress:
+    - from:
+      - podSelector: {}
+~                
+
+
+#To check the connectivity with two pod used command
+
+kubectl exec -it test-finance -n finance -- curl pod-ip
