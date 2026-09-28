@@ -1,0 +1,148 @@
+# Description
+# In Kubernetes, PersistentVolumes (PVs) provide cluster-level storage independent of Pod lifecycles. To use a PV, Pods request storage via a PersistentVolumeClaim (PVC). Kubernetes dynamically binds a PVC to an available PV that meets its storage and access requirements. This lab demonstrates the PVC-PV binding process and how a Pod uses the claimed storage.
+
+# You will:
+
+# Verify the namespace pvc-lab exists.
+
+# Create a PVC requesting 500Mi with ReadWriteOnce access, which binds to the existing PV "pv-demo".
+
+# Create a Pod storage-pod that mounts the PVC at /data and runs a BusyBox container.
+
+# Verify the PVC is Bound and the Pod is Running.
+
+# Objective
+# Understand PVC-PV binding in Kubernetes.
+
+# Learn how Pods consume claimed storage.
+
+# Observe dynamic allocation of storage to Pods.
+
+# Tasks
+# 1. Verify Namespace: Ensure "pvc-lab" exists.
+
+# 2. Create PVC:
+
+# Manifest must include:
+
+# Name: pvc-demo
+
+# Namespace: pvc-lab
+
+# Access mode: ReadWriteOnce
+
+# Requested storage: 500Mi
+
+# Apply PVC and confirm it binds to pv-demo.
+
+# 3. Create Pod:
+
+# Manifest must include:
+
+# Name: storage-pod
+
+# Mounts PVC at /data
+
+# Runs BusyBox with sleep 3600
+
+# 3. Apply Pod and confirm it runs successfully
+
+# Notes
+# PVC binds only to PVs that satisfy storage size and access mode.
+
+# Pod does not reference PV directly; it uses the PVC.
+
+# PVC status must be Bound before the Pod can access storage.
+
+# Mounted path /data should be accessible inside the Pod.
+
+# Expected Outcomes
+# PVC pvc-demo is successfully bound to PV pv-demo.
+
+# Pod storage-pod is running and can access /data.
+
+# Learners understand how Kubernetes dynamically links Pods to storage using PVCs.
+
+
+
+<-------------------------------------------------------------------->
+Solutions.
+
+
+1. Verify namespace
+kubectl get ns pvc-lab
+
+2. Create PVC manifest
+cat <<EOF > pvc-demo.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-demo
+  namespace: pvc-lab
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 500Mi
+EOF
+
+
+3. Apply PVC
+kubectl apply -f pvc-demo.yaml
+
+4. Verify PVC is bound
+kubectl -n pvc-lab get pvc pvc-demo
+
+5. Create Pod manifest using the PVC
+cat <<EOF > storage-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: storage-pod
+  namespace: pvc-lab
+spec:
+  containers:
+  - name: busybox
+    image: busybox
+    command: ["sleep", "3600"]
+    volumeMounts:
+    - name: storage
+      mountPath: /data
+  volumes:
+  - name: storage
+    persistentVolumeClaim:
+      claimName: pvc-demo
+EOF
+
+
+
+6. Apply the Pod manifest
+kubectl apply -f storage-pod.yaml
+
+7. Verify Pod status
+kubectl -n pvc-lab get pods
+
+
+<----------------------------------------------------------->
+Flow
+
+PV
+┌─────────────┐
+│ pv-demo     │
+│ 1Gi         │
+│ RWO         │
+└──────┬──────┘
+       │ Bound
+       ▼
+┌─────────────┐
+│ pvc-demo    │
+│ 500Mi       │
+│ RWO         │
+└──────┬──────┘
+       │ Used by
+       ▼
+┌─────────────┐
+│ storage-pod │
+│ /data       │
+└─────────────┘
