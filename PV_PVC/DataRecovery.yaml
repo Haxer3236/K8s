@@ -1,0 +1,133 @@
+# Description
+# Scenario:
+
+# You are the SRE for a transaction system. A storage incident has occurred: the Persistent Volume object original-pv was deleted from Kubernetes, but the vital transaction logs still exist on the server's disk at /tmp/critical-data.
+
+# The Good News: The data is safe on the node.
+
+# The Bad News: The application is down because there is no Kubernetes Volume mapped to this data.
+
+# Your Mission:
+
+# Manually recover the "orphaned" data by creating a New Persistent Volume that maps to the existing physical storage location, and then bind it to a new PVC to restore application access.
+
+# Requirements:
+
+# 1. Analyze the Situation: The setup has simulated the disaster. The data exists at /tmp/critical-data, but no PV exists.
+
+# 2. Create Recovered PV: Create a new PV named recovered-pv.
+
+# Capacity: 1Gi
+# Access Mode: ReadWriteOnce
+# Reclaim Policy: Retain
+# Storage Class Name: manual
+# HostPath: It must point to the existing data path: /tmp/critical-data.
+# 3. Create Restored PVC: Create a new PVC named restored-pvc.
+
+# Request: 1Gi
+# Storage Class: manual (Matches your new PV).
+# 4. Verify Restoration: Create a Pod named recovery-pod (image busybox) that mounts restored-pvc to /data. Verify that the file data.txt containing "Important Transaction Logs" exists.
+
+# Environment:
+
+# Kubernetes Interface: kubectl is configured.
+# Target Namespace: default.
+# Data Path: /tmp/critical-data (on the node).
+# Tasks
+# Task 1: Create Recovered PV
+
+# Create recovered-pv.yaml.
+# Configure it to point to /tmp/critical-data.
+# Set storageClassName: manual.
+# Task 2: Create Restored PVC
+
+# Create restored-pvc.yaml requesting 1Gi from storageClassName: manual.
+# Apply it and verify it binds to recovered-pv.
+# Task 3: Verify Data Access
+
+# Deploy recovery-pod.
+# Exec into the pod and read /data/data.txt to confirm the transaction logs are accessible.
+# Outcome
+# Recovered "lost" data by mapping a new PV to existing storage.
+# Mastered Static Provisioning for disaster recovery.
+# Validated data integrity across PV recreation.
+
+
+<--------------------------------------------------------------->
+
+Complete Solution (Run these commands)
+Step 1: Create Recovered PV
+
+cat <<EOF > recovered-pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: recovered-pv
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: Retain
+  storageClassName: manual
+  hostPath:
+    path: /tmp/critical-data
+EOF
+
+Step 2: Create Restored PVC
+
+cat <<EOF > restored-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: restored-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: manual
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+
+Step 3: Create Recovery Pod
+
+cat <<EOF > recovery-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: recovery-pod
+spec:
+  containers:
+  - name: app
+    image: busybox
+    command: ["sh", "-c", "sleep 3600"]
+    volumeMounts:
+    - name: storage
+      mountPath: /data
+  volumes:
+  - name: storage
+    persistentVolumeClaim:
+      claimName: restored-pvc
+EOF
+
+Step 4: Deploy and Verify
+
+kubectl apply -f recovered-pv.yaml
+kubectl apply -f restored-pvc.yaml
+kubectl apply -f recovery-pod.yaml
+
+# Wait for pod
+kubectl wait --for=condition=Ready pod/recovery-pod --timeout=60s
+
+# Check for the rescued data
+kubectl exec recovery-pod -- cat /data/data.txt
+
+Teaching Assistant (TA) - Help Request
+When can I access TA - Help Requests?
+Solve problems on your own first. This will deepen your understanding of the topics and increase your confidence. Use the free hints provided by your instructors if you get stuck. TAs are here to help, but you'll learn best by trying to solve problems on your own. Hence, TA Help Requests will be accessible to you only after you use all the 'free hints' available for the problem.
+Which type of Help Request should I make and how?
+Need help in understanding a topic?video call hr
+Do this when you need to understand Topics or Questions in detail
+Format: Video call on Scaler platform
+Video Call Help Request
