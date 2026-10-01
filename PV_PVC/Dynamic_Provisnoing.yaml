@@ -1,0 +1,121 @@
+
+# Q2. Dynamic Provisioning & Zone Awareness
+# Solved
+# Guide for using Scaler IDE to solve DevOps problems.
+# feature icon
+# Using hints except Complete Solution is Penalty free now
+# Use Hint
+# Description
+# Scenario:
+
+# You are deploying a distributed database across a multi-zone Kubernetes cluster.
+
+# The Problem: Standard storage provisioning happens immediately when a PVC is created. If the volume is created in us-west-2a, but the database Pod gets scheduled to a node in us-west-2b, the Pod will fail to start (FailedAttachVolume).
+
+# The Solution: You must configure Delayed Binding. This tells Kubernetes: "Do not create the volume until the Pod is scheduled. Then, create the volume in the same zone as the Pod."
+
+# Your Mission:
+
+# Create a StorageClass that enforces Zone Awareness using WaitForFirstConsumer and verify that a PVC remains Pending until a consumer (Pod) appears.
+
+# Requirements:
+
+# 1. StorageClass: Create a StorageClass named regional-storage.
+
+# Provisioner: rancher.io/local-path (Simulated).
+# Binding Mode: WaitForFirstConsumer (Crucial Setting).
+# Parameters: type: gp3.
+# 2. PVC: Create a PersistentVolumeClaim named delayed-pvc.
+
+# Storage Class: regional-storage.
+# Request: 1Gi.
+# 3. Consumer Pod: Create a Pod named consumer-pod that mounts this PVC.
+
+# Environment:
+
+# Kubernetes Interface: kubectl is configured.
+# Target Namespace: default.
+# Tasks
+# Task 1: Define Zone-Aware StorageClass
+
+# Create StorageClass with volumeBindingMode: WaitForFirstConsumer.
+# Task 2: Request Storage (PVC)
+
+# Create PVC referencing the new storage class.
+# Apply it and verify status is Pending.
+# Task 3: Create Consumer Pod
+
+# Create consumer-pod.yaml (using image busybox) that mounts delayed-pvc to /data.
+# Apply the pod.
+# Task 4: Verify Behavior
+
+# Verify that the StorageClass is correctly configured.
+# Verify the Linkage between Pod and PVC.
+# Outcome
+# Configured Topology-Aware Storage using WaitForFirstConsumer.
+# Prevented Zone Mismatch errors by delaying volume creation.
+# Validated the Dynamic Provisioning workflow.
+
+<--------------------------------------------------------------->
+Complete Solution (Run these commands)
+Step 1: Create Zone-Aware StorageClass
+
+cat <<EOF > regional-storage.yaml
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: regional-storage
+provisioner: rancher.io/local-path
+parameters:
+  type: gp3
+volumeBindingMode: WaitForFirstConsumer
+EOF
+
+Step 2: Create the PVC
+
+cat <<EOF > delayed-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: delayed-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: regional-storage
+  resources:
+    requests:
+      storage: 1Gi
+EOF
+
+Step 3: Create the Consumer Pod
+
+cat <<EOF > consumer-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: consumer-pod
+spec:
+  containers:
+  - name: app
+    image: busybox
+    command: ["sh", "-c", "sleep 3600"]
+    volumeMounts:
+    - name: storage
+      mountPath: /data
+  volumes:
+  - name: storage
+    persistentVolumeClaim:
+      claimName: delayed-pvc
+EOF
+
+Step 4: Deploy and Verify
+
+kubectl apply -f regional-storage.yaml
+kubectl apply -f delayed-pvc.yaml
+
+# Verify PVC is Pending (Waiting for consumer)
+kubectl get pvc delayed-pvc
+
+# Trigger the consumer
+kubectl apply -f consumer-pod.yaml
+
