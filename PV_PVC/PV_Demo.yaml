@@ -1,0 +1,70 @@
+
+# Description:
+# Persistent Volumes (PVs) in Kubernetes provide cluster-level storage independent of Pod lifecycles. Unlike ephemeral Pod storage, PVs can persist data beyond the lifespan of a Pod, making them essential for stateful applications. In this lab, you will create a statically provisioned PV backed by the node’s local filesystem using hostPath and verify its availability.
+
+# Objective:
+# Understand PV structure and lifecycle.
+
+# Learn static provisioning of PVs.
+
+# Verify PV readiness for Persistent Volume Claims (PVCs).
+
+# Tasks:
+# 1. Verify the namespace "pv-lab" exists.
+
+# 2.Create a Persistent Volume (PV):
+
+# Create a manifest file "pv-demo.yaml" including:
+
+# Name: pv-demo
+
+# Storage capacity: 1Gi
+
+# Access mode: ReadWriteOnce
+
+# HostPath: /mnt/data
+
+# Apply the manifest to create the PV.
+
+# 3.Verify PV Creation:
+
+# List PVs in the cluster.
+
+# Ensure pv-demo status is Available.
+
+# Notes:
+# PVs are cluster-scoped; they are not tied to a namespace.
+
+# hostPath volumes are suitable for testing, but not production.
+
+# ReadWriteOnce allows a single node to mount the volume read-write.
+
+# PVs exist independently of Pods and can be reused over time.
+
+# Expected Outcomes:
+# Persistent Volume pv-demo is created successfully.
+
+# PV appears in kubectl get pv list.
+
+# PV status is Available, ready for PVC binding.
+
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: pv-demo
+spec:
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadWriteOnce
+  hostPath:
+    path: /mnt/data
+
+
+    # <----------------------Command -------------------->
+    # kubectl get ns
+    # 2  vi pv-demo.yaml
+    # 3  kubectl apply -f pv-demo.yaml 
+    # 4  kubectl ge pv
+    # 5  kubectl get pv
+    # 6  history
