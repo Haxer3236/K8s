@@ -1,0 +1,90 @@
+
+# Description
+# Scenario:
+
+# You are building a logging system where an application writes logs to a file, and a separate "sidecar" agent ships those logs to a central server.
+
+# The Problem: The application container and the sidecar container run in the same Pod, but they have isolated filesystems. The sidecar cannot see the files written by the application.
+
+# The Solution: Use an emptyDir volume. This ephemeral storage is created when the Pod starts and is shared between all containers in the Pod.
+
+# Your Mission:
+
+# Create a Multi-Container Pod where one container writes data and the other reads it instantly, proving that they share the same storage lifecycle.
+
+# Requirements:
+
+# 1. Pod Name: Create a Pod named shared-logs-pod.
+
+# 2. Volume: Define a volume named temp-log-storage of type emptyDir.
+
+# 3. Container 1 (Writer):
+
+# Name: log-writer
+# Image: busybox
+# Command: Write "Critical System Log" to /var/logs/app.log every 5 seconds.
+# Mount: Mount temp-log-storage at path /var/logs.
+# 4. Container 2 (Reader):
+
+# Name: log-reader
+# Image: busybox
+# Command: Tail (read) the file /var/logs/app.log continuously.
+# Mount: Mount temp-log-storage at path /var/logs (same path).
+# Environment:
+
+# Kubernetes Interface: kubectl is configured.
+# Target Namespace: default.
+# Tasks
+# Task 1: Define Multi-Container Pod
+
+# Create a file named shared-pod.yaml.
+# Define the volumes section with emptyDir.
+# Define both containers with matching volumeMounts.
+# Task 2: Deploy and Verify
+
+# Apply the manifest.
+# Wait for the Pod to be Running.
+# Task 3: Validate Data Sharing
+
+# Check the logs of the log-reader container. It should show the messages written by the log-writer.
+# Crucial Test: Verify that if the Pod is deleted, the data is lost (Standard emptyDir behavior).
+# Outcome
+# Implemented the Sidecar Pattern for log processing.
+# Configured Shared Storage between isolated containers.
+# Validated the Ephemeral Lifecycle of emptyDir volumes.
+
+cat <<EOF > shared-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: shared-logs-pod
+spec:
+  containers:
+  - name: log-writer
+    image: busybox
+    command: ["sh", "-c", "while true; do echo 'Critical System Log' >> /var/logs/app.log; sleep 5; done"]
+    volumeMounts:
+    - name: temp-log-storage
+      mountPath: /var/logs
+  - name: log-reader
+    image: busybox
+    command: ["sh", "-c", "tail -f /var/logs/app.log"]
+    volumeMounts:
+    - name: temp-log-storage
+      mountPath: /var/logs
+  volumes:
+  - name: temp-log-storage
+    emptyDir: {}
+EOF
+
+Step 2: Deploy the Pod
+
+kubectl apply -f shared-pod.yaml
+
+Step 3: Verify Data Sharing
+
+# Wait for the pod to start
+kubectl wait --for=condition=Ready pod/shared-logs-pod --timeout=60s
+
+# Check the READER logs. If it shows the log message, it successfully read the file written by the WRITER.
+kubectl logs shared-logs-pod -c log-reader
