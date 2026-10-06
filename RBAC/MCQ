@@ -1,0 +1,62 @@
+Q2. Provisioning Logic Efficiency
+Solved
+You have a Kubernetes cluster configured with both m5.large (2 vCPU) and m5.2xlarge (8 vCPU) instance types available. A new Pod stays in Pending state requiring 6 vCPU and 12GB RAM. How does Karpenter's provisioning logic fundamentally differ from the standard Cluster Autoscaler (CA) in this specific scenario?
+
+Ans. Cluster Autoscaler is bound to scale up the existing m5.2xlarge node group, resulting in resource waste, whereas Karpenter can directly launch an instance type that minimizes the unused capacity.
+
+
+
+Q3. The "VPA Trap" in Memory Management
+Solved
+You are managing an application that suffers from a slow memory leak: usage grows from 500Mi to 2Gi over 6 hours before crashing (OOMKilled). To mitigate this, you enable the Vertical Pod Autoscaler (VPA) in Auto mode. What is the expected behavior and long-term consequence of this configuration?
+Ans. VPA will observe the high usage and progressively increase the memory requests and limits, masking the bug while allowing the leak to consume increasing cluster resources.
+
+Q4. Mitigating Downstream Scaling Lag
+Solved
+In a microservices chain (User → Order → Payment), you observe a total scaling latency of 8-10 minutes during traffic spikes. This happens because the "Order" service only triggers its HPA (and subsequent node provisioning) after the "User" service has successfully scaled and started sending traffic. Which Karpenter configuration strategy best eliminates this specific "Cascading Scaling Delay"?
+Ans. Configure a Burst Capacity Provisioner using ttlSecondsAfterEmpty to maintain pre-provisioned capacity, allowing downstream services to use available nodes without waiting for new.
+
+Q6. The "Perimeter" Fallacy
+Solved
+Your traditional firewall allows traffic on port 443 (HTTPS) to the Kubernetes API server from the corporate VPN. A developer, alice, connects to the VPN but does not have a valid Kubernetes certificate or token. What happens when she tries to run kubectl get pods?
+Ans. The request reaches the API server, but is rejected during Authentication because the server cannot verify Alice's identity.
+
+Q7. Authentication Flow & Groups
+Solved
+A user authenticates using a client certificate with the Subject CN=bob, O=engineers. In your cluster, there is a RoleBinding that grants edit access to the engineers group. There is no binding specifically for the user bob. Will Bob get access?
+Ans. Yes, because the API server maps the certificate's O field to a Kubernetes group, which matches the RoleBinding.
+
+Q. You create a ClusterRole named node-admin that allows deleting Nodes. You then bind this ClusterRole to user dave using a standard RoleBinding (not a ClusterRoleBinding) in the default namespace. What can Dave do?
+Ans. Dave cannot delete Nodes because the RoleBinding limits the ClusterRole's permissions to namespaced resources in default
+
+Q3. CI/CD Security & Least Privilege
+Solved
+You are designing the RBAC for a CI/CD pipeline service account. The pipeline needs to update image tags on existing Deployments. Which set of permissions represents the strict Least Privilege approach?
+Ans. verbs: ["get", "list", "patch", "update"] on resources: ["deployments"]
+
+Q4. Service Account Auto-Mounting
+Solved
+You have a backend API that connects to a database using a password injected via Environment Variables. It does not need to talk to the Kubernetes API. To harden this workload against post-compromise exploitation, what is the most effective change to the Pod Spec?
+Ans. Set automountServiceAccountToken: false
+
+Q5. The "Wildcard" Risk
+Solved
+During an audit, you find a ClusterRole with rules: [{apiGroups:["*"], resources:["*"], verbs:["get","list"]}]. The owner claims it is safe because it is "Read-Only". Why is this considered a critical vulnerability?
+Ans. It allows users to read Secrets, which may expose sensitive credentials such as database passwords and API keys.
+
+Q6. ClusterRole Aggregation
+Solved
+You have a parent ClusterRole view that uses aggregationRule to select roles with label rbac: view-extension. You create a new child ClusterRole monitoring-view with the correct label. When does the parent role get updated with the new permissions?
+Ans. Immediately and automatically.
+
+
+Q6. Troubleshooting Permissions
+Solved
+A developer alice claims she cannot list pods in the staging namespace, but you believe you gave her the correct RoleBinding. What is the definitive command to test her effective permission without needing her password? 
+Ans. kubectl auth can-i list pods -n staging --as=alice
+
+Q7. Emergency "Break-Glass" Access
+Solved
+You need to grant a specific user emergency-admin access to debug a production incident. This requires exec access into pods across all namespaces. Which binding pattern achieves this?
+Ans. Create a ClusterRole with pods/exec permissions and bind it using a ClusterRoleBinding to the user.
+
