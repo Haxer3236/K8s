@@ -1,0 +1,120 @@
+# Q1. ClusterRole Aggregation & Wildcard Fixes
+# Solved
+# Guide for using Scaler IDE to solve DevOps problems.
+# feature icon
+# Using hints except Complete Solution is Penalty free now
+# Use Hint
+# Scenario:
+
+# A security audit has flagged two critical issues in your cluster:
+
+# 1. The Wildcard Risk: A legacy ClusterRole named legacy-admin grants * verbs on * resources. This violates the principle of Least Privilege and must be remediated immediately.
+
+# 2. Scalability Issue: Your platform team creates new roles (like monitoring, logging, database) constantly. Instead of manually updating the main view role every time, you need to implement ClusterRole Aggregation. This allows new roles to "auto-join" the main view role simply by having a specific label.
+
+# Your Mission:
+
+# Remediate the insecure configuration and build a scalable, label-based permission system.
+
+# Note
+
+# Heads up — this question builds on the RBAC foundations you've already covered (Roles, ClusterRoles, and the general permission-rule structure), but it pushes into more advanced territory that isn't directly covered in the material: wildcard remediation and ClusterRole Aggregation.
+
+# You already know everything needed to understand why this matters.
+
+# Feel free to research this one — official Kubernetes docs on Aggregated ClusterRoles are a great place to start. It's a good opportunity to build a broader understanding of how RBAC scales in real production clusters beyond what we've covered so far.
+
+# Requirements:
+
+# 1. Wildcard Remediation:
+
+# Identify the legacy-admin ClusterRole.
+# Replace its dangerous wildcard permissions with a safe list: get, list on pods and services only.
+# 2. ClusterRole Aggregation (Parent):
+
+# Create a "Parent" ClusterRole named platform-view.
+# It should not have manual rules. Instead, it must use an aggregationRule to automatically select any ClusterRole with the label rbac.example.com/aggregate-to-platform: "true".
+# You can refer to the hints section for help with syntax.
+# 3. ClusterRole Aggregation (Child):
+
+# Create a "Child" ClusterRole named monitoring-rules.
+# Grant it get, list permissions on services and endpoints.
+# Crucial: Apply the label rbac.example.com/aggregate-to-platform: "true" so it gets absorbed by the parent.
+# Environment:
+
+# Kubernetes Interface: kubectl is configured.
+# Target Roles: legacy-admin (existing), platform-view (new), monitoring-rules (new).
+# Tasks
+# Task 1: Remediate Wildcard Role
+
+# Edit the legacy-admin ClusterRole.
+# Remove the resources: ["*"] and verbs: ["*"] lines.
+# Restrict it to only get and list on pods and services.
+# Task 2: Create Parent Aggregator
+
+# Create the platform-view ClusterRole.
+# Define the aggregationRule with a clusterRoleSelectors block matching the label rbac.example.com/aggregate-to-platform: "true".
+# Task 3: Create Child Role
+
+# Create the monitoring-rules ClusterRole with specific permissions (services, endpoints).
+# Attach the aggregation label to this role.
+# Task 4: Verify Aggregation
+
+# Inspect the platform-view role.
+# Confirm that it automatically contains the rules from monitoring-rules without you manually adding them.
+# Outcome
+# Eliminated the high-risk Wildcard Permission vulnerability.
+# Implemented Dynamic Permission Composition using Aggregated ClusterRoles.
+# Established a scalable pattern where "Labels define Permissions".
+
+<------------------------------------------------------------------>
+
+
+Complete Solution (Run these commands)
+
+Step 1: Remediate the Wildcard Role
+# Overwrite the dangerous role with safe permissions
+cat <<EOF | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: legacy-admin
+rules:
+- apiGroups: [""]
+  resources: ["pods", "services"]
+  verbs: ["get", "list"]
+EOF
+
+Step 2: Create Parent Aggregated Role
+
+cat <<EOF | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: platform-view
+aggregationRule:
+  clusterRoleSelectors:
+  - matchLabels:
+      rbac.example.com/aggregate-to-platform: "true"
+rules: [] 
+EOF
+
+Step 3: Create Child Role with Label
+
+cat <<EOF | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: monitoring-rules
+  labels:
+    rbac.example.com/aggregate-to-platform: "true"
+rules:
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list"]
+EOF
+
+Step 4: Verify Inheritance
+
+# The output should show the rules from monitoring-rules
+kubectl describe clusterrole platform-view
