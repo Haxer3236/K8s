@@ -1,0 +1,108 @@
+# Q10. The Building Manager (Cluster-Wide RBAC & Group Bindings)
+# Solved
+# Guide for using Scaler IDE to solve DevOps problems.
+# feature icon
+# Using hints except Complete Solution is Penalty free now
+# Use Hint
+# Description
+# Scenario:
+
+# Your infrastructure is scaling rapidly, and the company has introduced two distinct new teams with completely different access needs. The Monitoring Team: Needs global visibility into the cluster's physical health (Nodes) and virtual divisions (Namespaces) to run their agents. The Tenant A Developers: Need full control over Pods, but strictly limited to their own dedicated tenant-a namespace. The Audit Mandate: A recent security audit dictates that permissions must never be assigned to individual users. You must use Group-based Bindings to ensure scalable, enterprise-grade access management.
+
+# Your Mission:
+
+# Implement a dual-level RBAC architecture. You must establish a "Building Manager" (Cluster-wide access) and a "Floor Manager" (Namespace-scoped access), mapping them to abstract Kubernetes Groups instead of individual users.
+
+# Requirements:
+
+# 1. Global Observation (ClusterRole): Create a ClusterRole named global-observer with the following rules:
+
+# Allowed Resources: nodes, namespaces (API group: "").
+# Allowed Verbs: get, list, watch.
+# 2. Global Group Binding (ClusterRoleBinding): Bind this ClusterRole globally. Name the binding monitoring-global-binding.
+
+# Target Subject: A Group named system:monitoring.
+# 3. Local Developer (Role): Create a Role named local-developer within the tenant-a namespace with the following rules:
+
+# Allowed Resources: pods (API group: "").
+# Allowed Verbs: get, list, create, delete.
+# 4. Local Group Binding (RoleBinding): Bind this Role only within the tenant-a namespace. Name the binding devs-local-binding.
+
+# Target Subject: A Group named tenant-a-devs.
+# 5: Verify Security
+
+# Use kubectl auth can-i with group impersonation (--as=testuser --as-group=<group-name>) to verify:
+# Can system:monitoring list nodes? (Should be yes)
+# Can tenant-a-devs create pods in tenant-a? (Should be yes)
+# Can tenant-a-devs list nodes? (Should be no)
+# Outcome
+# Established the fundamental difference between Role (Namespace-scoped) and ClusterRole (Cluster-scoped).
+# Implemented highly scalable Group-based Subjects for RBAC bindings.
+# Secured cluster-wide resources (Nodes) from local namespace developers.
+
+Complete Solution
+Step 1: Create Namespace and Global Rules
+
+kubectl create namespace tenant-a
+
+cat <<EOF | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: global-observer
+rules:
+- apiGroups: [""]
+  resources: ["nodes", "namespaces"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: monitoring-global-binding
+subjects:
+- kind: Group
+  name: system:monitoring
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: ClusterRole
+  name: global-observer
+  apiGroup: rbac.authorization.k8s.io
+EOF
+
+Step 2: Create Local Role & Binding
+
+cat <<EOF | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: local-developer
+  namespace: tenant-a
+rules:
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "create", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: devs-local-binding
+  namespace: tenant-a
+subjects:
+- kind: Group
+  name: tenant-a-devs
+  apiGroup: rbac.authorization.k8s.io
+roleRef:
+  kind: Role
+  name: local-developer
+  apiGroup: rbac.authorization.k8s.io
+EOF
+
+Step 3: Verify
+
+# Monitoring group can see nodes
+kubectl auth can-i list nodes --as=tester --as-group=system:monitoring
+
+# Dev group cannot see nodes, but can create pods in tenant-a
+kubectl auth can-i list nodes --as=tester --as-group=tenant-a-devs
+kubectl auth can-i create pods -n tenant-a --as=tester --as-group=tenant-a-devs
+
